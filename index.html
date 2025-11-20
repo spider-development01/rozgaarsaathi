@@ -24,7 +24,7 @@
             --primary-dark: #3a2db8;
             --secondary: #7300ff;    
             --bg: #aab9b2;           
-            --surface: #e0e0e0;
+            --surface: #ffffff;
             --text-main: #24355a;
             --text-muted: #0d1f42;
             --border: #E5E7EB;
@@ -33,6 +33,7 @@
             --shadow: 0 10px 40px -10px rgba(78, 59, 247, 0.1);
             --radius: 16px;
         }
+
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
@@ -43,7 +44,7 @@
             background-color: var(--bg);
             color: var(--text-main);
             line-height: 1.6;
-            overscroll-behavior-y: none; /* Prevents pull-to-refresh on mobile */
+            overscroll-behavior-y: none;
         }
 
         /* --- HEADER --- */
@@ -120,7 +121,7 @@
             font-family: inherit;
             color: var(--text-main);
             transition: all 0.2s;
-            -webkit-appearance: none; /* Remove default styling on iOS */
+            -webkit-appearance: none;
         }
 
         input:focus, select:focus, textarea:focus {
@@ -128,6 +129,8 @@
             border-color: var(--primary);
             box-shadow: 0 0 0 4px rgba(78, 59, 247, 0.1);
         }
+
+        input:required { border-left: 4px solid var(--primary); }
 
         /* Password Toggle */
         .password-wrapper { position: relative; }
@@ -167,7 +170,6 @@
         button.primary-btn:active { transform: translateY(0); }
         button.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
 
-        /* Spinner Animation */
         @keyframes spin { to { transform: rotate(360deg); } }
         .spinner-icon {
             animation: spin 1s linear infinite;
@@ -329,7 +331,7 @@
             </div>
         </section>
 
-        <!-- SCREEN 2: Auth (IMPROVED) -->
+        <!-- SCREEN 2: Auth -->
         <section id="auth-screen" class="view hidden">
             <h2 id="auth-title">Welcome Back</h2>
             <p id="auth-subtitle">Enter your details to login.</p>
@@ -371,7 +373,7 @@
                 
                 <div id="worker-category-input" class="hidden form-group">
                     <label>Select Category</label>
-                    <select id="category">
+                    <select id="category" required>
                         <option value="Labour">Labour Worker</option>
                         <option value="Carpenter">Carpenter</option>
                         <option value="Maid">Maid</option>
@@ -386,7 +388,7 @@
                 <div class="form-group"><input type="tel" id="phone" placeholder="Mobile Number" autocomplete="tel" required></div>
                 
                 <div class="form-group">
-                    <select id="city">
+                    <select id="city" required>
                         <option value="" disabled selected>Select City</option>
                         <option value="New Delhi">New Delhi</option>
                         <option value="Ludhiana">Ludhiana</option>
@@ -501,7 +503,7 @@
             lang: localStorage.getItem('rozgaar_lang') || 'en',
             activeJob: null,
             searchResult: [],
-            isLoginMode: true // Toggle between Login/Signup
+            isLoginMode: true 
         };
 
         // --- UI HELPERS ---
@@ -553,7 +555,6 @@
         function showView(id) {
             document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
-            // Toggle Logout Button
             const hideLogout = ['role-selection','auth-screen','language-selection'];
             document.getElementById('logoutBtn').classList.toggle('hidden', hideLogout.includes(id));
         }
@@ -563,8 +564,13 @@
             state.role = role;
             localStorage.setItem('rozgaar_role', role);
             if (state.user) {
-                // Fix role if logged in
-                await supabase.from('profiles').update({ role: role }).eq('id', state.user.id);
+                // Prevent existing users from switching roles by just clicking back
+                const { data: profile } = await supabase.from('profiles').select('role').eq('id', state.user.id).single();
+                if(profile && profile.role !== role) {
+                     alert(`You are registered as a ${profile.role}. Please login as a ${profile.role}.`);
+                     location.reload();
+                     return;
+                }
                 location.reload();
             } else {
                 if (role === 'worker') showView('language-selection');
@@ -578,7 +584,7 @@
             showView('auth-screen');
         }
 
-        // --- AUTH LOGIC (REFACTORED) ---
+        // --- AUTH LOGIC ---
         function toggleAuthMode() {
             state.isLoginMode = !state.isLoginMode;
             const title = document.getElementById('auth-title');
@@ -603,10 +609,13 @@
 
         document.getElementById('auth-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('auth-btn');
+            
+            // Manual validation check just in case
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            if(!email || !password) return;
 
+            const btn = document.getElementById('auth-btn');
             setLoading(btn, true, state.isLoginMode ? "Logging in..." : "Creating Account...");
 
             try {
@@ -617,10 +626,18 @@
                     handleSession(data.user);
                 } else {
                     // SIGNUP
-                    const { data, error } = await supabase.auth.signUp({ email, password });
+                    const { data, error } = await supabase.auth.signUp({
+                        email, 
+                        password,
+                        options: { 
+                            // Redirect to this URL after email confirmation
+                            emailRedirectTo: 'https://rozgaar.codeinblack.tech/' 
+                        }
+                    });
                     if (error) throw error;
-                    showToast("Account created! Logging you in...");
-                    handleSession(data.user);
+                    showToast("Confirmation email sent! Check your inbox.");
+                    // If auto-login happens on signup, handle it, otherwise wait
+                    if(data.user) handleSession(data.user);
                 }
             } catch (err) {
                 showToast(err.message, 'error');
@@ -633,12 +650,24 @@
             state.user = user;
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
 
+            // NEW: Strict Role Check
+            // If a profile exists, we ensure the user is logging into the correct portal.
+            // If I selected "Employer" but I am a "Worker" in DB, kick me out.
+            const selectedRole = localStorage.getItem('rozgaar_role');
+            
             if (profile) {
-                if (!profile.role) {
-                    showToast("Profile role missing", 'error');
-                    showView('role-selection');
-                    return;
+                if (selectedRole && profile.role !== selectedRole) {
+                    // Role Mismatch Detected
+                    await supabase.auth.signOut();
+                    showToast(`Wrong Account: You are a ${profile.role}, not a ${selectedRole}.`, 'error');
+                    setTimeout(() => {
+                        localStorage.removeItem('rozgaar_role');
+                        window.location.reload();
+                    }, 2000);
+                    return; 
                 }
+
+                // Role matches or no selection (direct link), proceed
                 state.profile = profile;
                 state.role = profile.role;
                 localStorage.setItem('rozgaar_role', profile.role);
@@ -651,8 +680,16 @@
                     listenForJobs();
                 }
             } else {
+                // No profile yet -> Onboarding
+                // Here they become whatever role they selected
                 showView('onboarding-screen');
-                document.getElementById('worker-category-input').classList.toggle('hidden', state.role === 'employer');
+                if(state.role === 'employer') {
+                    document.getElementById('worker-category-input').classList.add('hidden');
+                    document.getElementById('category').removeAttribute('required'); // Remove required for employer
+                } else {
+                    document.getElementById('worker-category-input').classList.remove('hidden');
+                    document.getElementById('category').setAttribute('required', 'true');
+                }
             }
         }
 
@@ -722,7 +759,7 @@
             }
 
             data.forEach(w => {
-                const img = w.photo_url.includes('placeholder') ? 'https://via.placeholder.com/150' : w.photo_url;
+                const img = (w.photo_url && !w.photo_url.includes('placeholder')) ? w.photo_url : 'https://via.placeholder.com/150';
                 list.innerHTML += `
                     <div class="worker-card">
                         <img src="${img}">

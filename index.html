@@ -21,7 +21,7 @@
         /* --- CSS VARIABLES & RESET --- */
                 :root {
             --primary: #4E3BF7;      
-            --primary-dark: #3a2db8;
+            --primary-dark: #1c146a;
             --secondary: #7300ff;    
             --bg: #aab9b2;           
             --surface: #ffffff;
@@ -221,7 +221,6 @@
         .role-card i { font-size: 2.5rem; color: var(--text-muted); margin-bottom: 10px; display: block; }
         .role-card:hover i { color: var(--primary); }
         
-        /* Worker/Search Items */
         .worker-card {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -359,6 +358,28 @@
                     <p id="toggle-text">New here? <span onclick="toggleAuthMode()">Create an Account</span></p>
                 </div>
             </form>
+        </section>
+
+        <!-- SCREEN 2.5: Verify Email (NEW) -->
+        <section id="verify-email-screen" class="view hidden" style="text-align:center; padding-top:3rem;">
+            <div style="background:#EFF6FF; width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem auto;">
+                <i class="ri-mail-send-line" style="font-size:2.5rem; color:var(--primary);"></i>
+            </div>
+            <h2>Check your Inbox</h2>
+            <p>We have sent a verification link to <br><strong id="sent-email" style="color:var(--text-main)"></strong></p>
+            
+            <!-- Loading Icon -->
+            <div class="spinner-icon" style="color:var(--primary); font-size:2.5rem; margin:2rem 0;">
+                <i class="ri-loader-4-line"></i>
+            </div>
+
+            <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:2rem;">
+                Click the link in the email to verify your account and continue.
+            </p>
+
+            <button class="primary-btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border);" onclick="location.reload()">
+                I have verified
+            </button>
         </section>
 
         <!-- SCREEN 3: Profile Setup -->
@@ -555,7 +576,7 @@
         function showView(id) {
             document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
-            const hideLogout = ['role-selection','auth-screen','language-selection'];
+            const hideLogout = ['role-selection','auth-screen','language-selection', 'verify-email-screen'];
             document.getElementById('logoutBtn').classList.toggle('hidden', hideLogout.includes(id));
         }
 
@@ -610,7 +631,6 @@
         document.getElementById('auth-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Manual validation check just in case
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             if(!email || !password) return;
@@ -630,14 +650,15 @@
                         email, 
                         password,
                         options: { 
-                            // Redirect to this URL after email confirmation
                             emailRedirectTo: 'https://rozgaar.codeinblack.tech/' 
                         }
                     });
                     if (error) throw error;
-                    showToast("Confirmation email sent! Check your inbox.");
-                    // If auto-login happens on signup, handle it, otherwise wait
-                    if(data.user) handleSession(data.user);
+                    
+                    // SUCCESS: Don't login yet. Show Verify Screen.
+                    document.getElementById('sent-email').textContent = email;
+                    showView('verify-email-screen');
+                    setLoading(btn, false);
                 }
             } catch (err) {
                 showToast(err.message, 'error');
@@ -650,9 +671,6 @@
             state.user = user;
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
 
-            // NEW: Strict Role Check
-            // If a profile exists, we ensure the user is logging into the correct portal.
-            // If I selected "Employer" but I am a "Worker" in DB, kick me out.
             const selectedRole = localStorage.getItem('rozgaar_role');
             
             if (profile) {
@@ -667,7 +685,6 @@
                     return; 
                 }
 
-                // Role matches or no selection (direct link), proceed
                 state.profile = profile;
                 state.role = profile.role;
                 localStorage.setItem('rozgaar_role', profile.role);
@@ -681,11 +698,10 @@
                 }
             } else {
                 // No profile yet -> Onboarding
-                // Here they become whatever role they selected
                 showView('onboarding-screen');
                 if(state.role === 'employer') {
                     document.getElementById('worker-category-input').classList.add('hidden');
-                    document.getElementById('category').removeAttribute('required'); // Remove required for employer
+                    document.getElementById('category').removeAttribute('required');
                 } else {
                     document.getElementById('worker-category-input').classList.remove('hidden');
                     document.getElementById('category').setAttribute('required', 'true');
@@ -767,7 +783,7 @@
                             <h3 style="margin:0; font-size:1.1rem;">${w.full_name}</h3>
                             <p style="margin:0; font-size:0.9rem; color:var(--text-muted);"><i class="ri-map-pin-line"></i> ${w.city}</p>
                         </div>
-                        <button class="primary-btn" style="width:auto; padding:10px 20px; font-size:0.9rem;" onclick="initiateHire('${w.id}')">Hire ₹60</button>
+                        <button class="primary-btn" style="width:auto; padding:10px 20px; font-size:0.9rem;" onclick="initiateHire('${w.id}')">Hire ₹20</button>
                     </div>
                 `;
             });

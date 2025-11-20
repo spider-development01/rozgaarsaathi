@@ -187,7 +187,7 @@ async function initiateHire(workerId, workerName) {
 
     try {
         // 1. Call your new backend to create an Order ID
-        const response = await fetch("http://127.0.0.1:5000/create-order", {
+        const response = await fetch("https://razorpay-snll.onrender.com/create-order", {
             method: "POST",
             headers: { "Content-Type": "application/json" }
         });

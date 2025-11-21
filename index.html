@@ -898,11 +898,11 @@
             }
         }
         // When the page loads, immediately wake it up
-fetch("https://razorpay-snll.onrender.com");
+fetch("https://razorpay-snll.onrender.com/create-order");
 
 // Keep sending pings every 3 minutes while the user is on the site
 setInterval(() => {
-  fetch("https://razorpay-snll.onrender.com");
+  fetch("https://razorpay-snll.onrender.com/create-order");
 }, 180000); // 180000 ms = 3 minutes
 
     </script>

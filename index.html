@@ -330,6 +330,8 @@
     <button id="mic-btn" class="mic-btn hidden" onclick="toggleVoice()">
         <i class="ri-mic-fill"></i>
     </button>
+    
+    <!-- Audio element for voice response -->
     <audio id="response-audio" src="response.mp3" preload="auto"></audio>
 
     <main id="app">
@@ -1088,23 +1090,38 @@
                     await audio.play().catch(e => {});
                 } catch(e) {}
 
+                // COMMAND: HIRE [CATEGORY]
                 if (transcript.includes('hire') && state.role === 'employer') {
-                    const categories = ['plumber', 'carpenter', 'cook', 'maid', 'labour', 'cleaner', 'electrician'];
-                    const foundCat = categories.find(c => transcript.includes(c));
+                    // 1. Identify valid category from dropdown options
+                    const select = document.getElementById('search-category');
+                    let foundValue = null;
+
+                    // Loop through actual options to match transcript (case-insensitive)
+                    for (let i = 0; i < select.options.length; i++) {
+                        const opt = select.options[i];
+                        if (transcript.includes(opt.value.toLowerCase())) {
+                            foundValue = opt.value;
+                            break;
+                        }
+                    }
                     
-                    if (foundCat) {
-                        const select = document.getElementById('search-category');
-                        const val = foundCat.charAt(0).toUpperCase() + foundCat.slice(1);
-                        select.value = val;
+                    if (foundValue) {
+                        select.value = foundValue; // Update UI
+                        showToast(`Voice: Finding ${foundValue}...`);
                         
-                        showToast(`Voice: Finding ${val}...`);
+                        // 2. Wait for search to complete and render HTML
                         const success = await findWorkers();
                         
+                        // 3. Wait for DOM paint then click button
                         if (success) {
                             setTimeout(() => {
                                 const firstBtn = document.querySelector('.hire-btn');
-                                if (firstBtn) firstBtn.click();
-                            }, 500); 
+                                if (firstBtn) {
+                                    firstBtn.click();
+                                } else {
+                                    showToast("No workers found to hire.", 'error');
+                                }
+                            }, 500); // 500ms delay to ensure button exists
                         }
                     } else {
                         showToast("Category not understood. Try 'Hire Plumber'", 'error');

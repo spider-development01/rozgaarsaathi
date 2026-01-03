@@ -21,17 +21,16 @@
         /* --- CSS VARIABLES & RESET --- */
         :root {
             --primary: #4E3BF7;      
-            --primary-dark: #1c146a;
-            --secondary: #7300ff;    
-            --bg: #aab9b2;           
+            --primary-dark: #3a2bc2;
+            --bg: #F3F4F6;           
             --surface: #ffffff;
-            --text-main: #24355a;
-            --text-muted: #0d1f42;
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
             --border: #E5E7EB;
-            --success: #046545;
+            --success: #10B981;
             --danger: #EF4444;
-            --shadow: 0 10px 40px -10px rgba(78, 59, 247, 0.1);
             --radius: 16px;
+            --ease-spring: cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -48,7 +47,8 @@
 
         /* --- HEADER --- */
         header {
-            background: var(--surface);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
             padding: 1rem 5%;
             display: flex;
             justify-content: space-between;
@@ -56,17 +56,19 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
             height: 70px;
+            transition: all 0.3s var(--ease-spring);
         }
 
         .brand {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 800;
             color: var(--text-main);
             display: flex;
             align-items: center;
             gap: 8px;
+            letter-spacing: -0.5px;
         }
         .brand span { color: var(--primary); }
 
@@ -77,16 +79,14 @@
             padding: 8px 16px;
             border-radius: 50px;
             font-weight: 600;
-            font-size: 0.9rem;
-            width: auto;
-            margin: 0;
+            font-size: 0.85rem;
             display: flex;
             align-items: center;
             gap: 5px;
             cursor: pointer;
-            transition: 0.2s;
+            transition: all 0.2s var(--ease-spring);
         }
-        #logoutBtn:hover { background: #f3f4f6; color: var(--text-main); }
+        #logoutBtn:hover { background: #f3f4f6; color: var(--text-main); transform: translateY(-1px); }
 
         /* --- MAIN CONTAINER --- */
         main {
@@ -94,156 +94,149 @@
             margin: 0 auto;
             padding: 2rem 1.5rem;
             min-height: calc(100vh - 70px);
-            padding-bottom: 100px; /* Space for mic button */
+            padding-bottom: 120px;
         }
 
-        .view { animation: fadeIn 0.4s ease-out forwards; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* --- ANIMATIONS --- */
+        .view { 
+            animation: slideFadeIn 0.6s var(--ease-spring) forwards;
+            will-change: transform, opacity;
         }
-
-        h2 { font-size: 1.8rem; font-weight: 800; margin: 0 0 0.5rem 0; line-height: 1.2; }
-        h2 + p { color: var(--text-muted); margin-top: 0; margin-bottom: 2rem; }
+        
+        @keyframes slideFadeIn {
+            from { opacity: 0; transform: translateY(15px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
 
         .hidden { display: none !important; }
+
+        h2 { font-size: 1.75rem; font-weight: 800; margin: 0 0 0.5rem 0; letter-spacing: -0.5px; color: #111827; }
+        h2 + p { color: var(--text-muted); margin-top: 0; margin-bottom: 2rem; font-size: 1.05rem; }
 
         /* --- FORMS & INPUTS --- */
         .form-group { margin-bottom: 1.2rem; position: relative; }
         
-        input, select, textarea {
+        input, select {
             width: 100%;
-            padding: 16px;
+            padding: 18px 16px;
             background: var(--surface);
-            border: 1.5px solid var(--border);
-            border-radius: 12px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
             font-size: 1rem;
             font-family: inherit;
             color: var(--text-main);
-            transition: all 0.2s;
+            transition: all 0.2s var(--ease-spring);
             -webkit-appearance: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         }
 
-        input:focus, select:focus, textarea:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 4px rgba(78, 59, 247, 0.1);
+            transform: translateY(-1px);
         }
 
-        input:required { border-left: 4px solid var(--primary); }
+        /* --- SKELETON LOADING --- */
+        .skeleton-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .skeleton-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .skeleton {
+            background: #e0e0e0;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+        }
+        .sk-circle { width: 60px; height: 60px; border-radius: 50%; flex-shrink: 0; }
+        .sk-line { height: 16px; width: 100%; margin-bottom: 8px; }
+        .sk-line.short { width: 60%; }
+        .sk-btn { width: 80px; height: 40px; margin-left: auto; border-radius: 8px; }
 
-        /* Password Toggle */
-        .password-wrapper { position: relative; }
-        .password-toggle {
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 1.2rem;
-            background: none;
-            border: none;
-            padding: 0;
+        @keyframes shimmer { 
+            0% { background-position: 200% 0; } 
+            100% { background-position: -200% 0; } 
         }
 
-        /* --- BUTTONS & LOADERS --- */
+        /* --- BUTTONS --- */
         button.primary-btn {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 16px;
-            border-radius: 12px;
+            padding: 18px;
+            border-radius: 14px;
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
             width: 100%;
-            transition: all 0.2s;
+            transition: all 0.3s var(--ease-spring);
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 10px;
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 10px 20px -5px rgba(78, 59, 247, 0.3);
         }
-        button.primary-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
-        button.primary-btn:active { transform: translateY(0); }
-        button.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        button.primary-btn:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(78, 59, 247, 0.4); }
+        button.primary-btn:active { transform: scale(0.98); }
 
+        .spinner-icon { animation: spin 0.8s linear infinite; font-size: 1.3rem; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner-icon {
-            animation: spin 1s linear infinite;
-            font-size: 1.2rem;
-        }
 
         /* --- MIC BUTTON --- */
         .mic-btn {
             position: fixed;
             bottom: 30px;
             right: 30px;
-            width: 60px;
-            height: 60px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             background: var(--primary);
             color: white;
             border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            font-size: 1.5rem;
+            box-shadow: 0 8px 30px rgba(78, 59, 247, 0.4);
+            font-size: 1.6rem;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            transition: transform 0.2s;
+            transition: all 0.3s var(--ease-spring);
         }
-        .mic-btn:active { transform: scale(0.9); }
-        .mic-listening { background: var(--danger); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .mic-btn:hover { transform: scale(1.05) rotate(5deg); }
+        .mic-listening { background: var(--danger); animation: pulse 1.5s infinite; box-shadow: 0 8px 30px rgba(239, 68, 68, 0.4); }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-        /* --- TOAST NOTIFICATIONS --- */
-        #toast-container {
-            position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            width: 90%;
-            max-width: 400px;
-            pointer-events: none;
-        }
-        .toast {
-            background: #333;
-            color: white;
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-top: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: slideUp 0.3s ease-out forwards;
-            pointer-events: auto;
-            font-size: 0.95rem;
-            font-weight: 500;
-        }
-        .toast.error { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
-        .toast.success { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
-        @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-
-        /* --- CARD COMPONENTS --- */
+        /* --- CARDS --- */
         .card-container { display: grid; gap: 1rem; margin-top: 1.5rem; }
         .role-card {
             background: var(--surface);
-            border: 2px solid var(--border);
+            border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 1.5rem;
+            padding: 1.8rem;
             text-align: center;
             cursor: pointer;
-            transition: 0.2s;
+            transition: all 0.3s var(--ease-spring);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
         }
-        .role-card:hover { border-color: var(--primary); background: #F5F3FF; }
-        .role-card i { font-size: 2.5rem; color: var(--text-muted); margin-bottom: 10px; display: block; }
-        .role-card:hover i { color: var(--primary); }
+        .role-card:hover { 
+            border-color: var(--primary); 
+            background: #F5F3FF; 
+            transform: translateY(-4px); 
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); 
+        }
+        .role-card i { font-size: 2.8rem; color: #9CA3AF; margin-bottom: 15px; display: block; transition: 0.3s; }
+        .role-card:hover i { color: var(--primary); transform: scale(1.1); }
         
         .worker-card {
             background: var(--surface);
@@ -254,81 +247,89 @@
             display: flex;
             align-items: center;
             gap: 1rem;
+            transition: all 0.3s var(--ease-spring);
+            animation: fadeInItem 0.5s var(--ease-spring) backwards;
         }
+        .worker-card:nth-child(1) { animation-delay: 0.1s; }
+        .worker-card:nth-child(2) { animation-delay: 0.2s; }
+        .worker-card:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes fadeInItem {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .worker-card img {
             width: 60px;
             height: 60px;
             border-radius: 50%;
             object-fit: cover;
-            background: #eee;
+            background: #f3f4f6;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
         .active-job-profile {
             background: #F0FDFA; 
-            border: 2px solid var(--success);
+            border: 1px solid var(--success);
             align-items: flex-start;
         }
         
-        .phone-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--success);
+        /* --- TOAST --- */
+        #toast-container {
+            position: fixed;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: 90%;
+            max-width: 400px;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(8px);
             color: white;
-            text-decoration: none;
-            padding: 10px 20px;
+            padding: 14px 20px;
             border-radius: 50px;
-            font-weight: 700;
-            margin-top: 12px;
-            font-size: 0.95rem;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-            transition: 0.2s;
+            margin-top: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            animation: slideUp 0.4s var(--ease-spring) forwards;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
-        .phone-link:hover { background: #059669; transform: scale(1.05); }
+        .toast.success { background: #064E3B; color: #D1FAE5; }
+        .toast.error { background: #7F1D1D; color: #FEE2E2; }
+        @keyframes slideUp { from { opacity:0; transform:translateY(30px) scale(0.9); } to { opacity:1; transform:translateY(0) scale(1); } }
 
-        /* Auth Toggle */
-        .auth-toggle {
-            text-align: center;
-            margin-top: 1.5rem;
-            font-size: 0.95rem;
-        }
-        .auth-toggle span {
-            color: var(--primary);
-            font-weight: 700;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-
-        /* Mobile Optimizations */
+        /* Mobile Adjustments */
         @media (max-width: 480px) {
             main { padding: 1.5rem 1rem; }
             h2 { font-size: 1.6rem; }
             .worker-card { flex-direction: column; text-align: center; }
-            .phone-link { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <!-- Header -->
     <header>
         <div class="brand">
-            <i class="ri-briefcase-4-fill" style="color:var(--primary);"></i>
+            <i class="ri-briefcase-4-fill" style="color:var(--primary); font-size:1.6rem;"></i>
             Rozgaar<span>Saathi</span>
         </div>
         <button id="logoutBtn" class="hidden" onclick="handleLogout()">
-            <i class="ri-logout-box-r-line"></i> <span style="margin-left:4px">Logout</span>
+            <i class="ri-logout-box-r-line"></i> <span>Logout</span>
         </button>
     </header>
 
-    <!-- Voice Button -->
     <button id="mic-btn" class="mic-btn hidden" onclick="toggleVoice()">
         <i class="ri-mic-fill"></i>
     </button>
-    <!-- Hidden audio element for response -->
     <audio id="response-audio" src="response.mp3" preload="auto"></audio>
 
     <main id="app">
@@ -353,7 +354,8 @@
 
         <!-- SCREEN 1.5: Language -->
         <section id="language-selection" class="view hidden">
-            <h2>Select Language / भाषा चुनें / ਭਾਸ਼ਾ ਚੁਣੋ</h2>
+            <h2>Select Language</h2>
+            <p>Choose your preferred language.</p>
             <div class="card-container">
                 <button class="primary-btn" style="background:white; color:var(--text-main); border:1px solid var(--border); justify-content:space-between" onclick="setLanguage('en')">English <i class="ri-arrow-right-s-line"></i></button>
                 <button class="primary-btn" style="background:white; color:var(--text-main); border:1px solid var(--border); justify-content:space-between" onclick="setLanguage('hi')">Hindi (हिंदी) <i class="ri-arrow-right-s-line"></i></button>
@@ -368,16 +370,12 @@
             
             <form id="auth-form">
                 <div class="form-group">
-                    <label data-i18n="email">Email Address</label>
-                    <input type="email" id="email" placeholder="name@example.com" autocomplete="email" required>
+                    <input type="email" id="email" placeholder="Email Address" autocomplete="email" required>
                 </div>
                 <div class="form-group">
-                    <label data-i18n="password">Password</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" required>
-                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" aria-label="Toggle Password">
-                            <i class="ri-eye-off-line" id="eye-icon"></i>
-                        </button>
+                    <div style="position:relative">
+                        <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+                        <i class="ri-eye-off-line" id="eye-icon" onclick="togglePasswordVisibility()" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); color:#9CA3AF; cursor:pointer; font-size:1.2rem;"></i>
                     </div>
                 </div>
                 
@@ -392,13 +390,13 @@
         </section>
 
         <!-- SCREEN 2.5: Verify Email -->
-        <section id="verify-email-screen" class="view hidden" style="text-align:center; padding-top:3rem;">
-            <div style="background:#EFF6FF; width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem auto;">
-                <i class="ri-mail-send-line" style="font-size:2.5rem; color:var(--primary);"></i>
+        <section id="verify-email-screen" class="view hidden" style="text-align:center; padding-top:2rem;">
+            <div style="background:#EFF6FF; width:100px; height:100px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem auto; box-shadow:0 10px 30px -10px rgba(78, 59, 247, 0.2);">
+                <i class="ri-mail-send-line" style="font-size:3rem; color:var(--primary);"></i>
             </div>
             <h2 data-i18n="check_inbox">Check your Inbox</h2>
             <p><span data-i18n="email_sent">We have sent a verification link to</span> <br><strong id="sent-email" style="color:var(--text-main)"></strong></p>
-            <div class="spinner-icon" style="color:var(--primary); font-size:2.5rem; margin:2rem 0;"><i class="ri-loader-4-line"></i></div>
+            <div class="spinner-icon" style="color:var(--primary); font-size:2rem; margin:2rem 0;"><i class="ri-loader-4-line"></i></div>
             <button class="primary-btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border);" onclick="location.reload()" data-i18n="verified_btn">I have verified</button>
         </section>
 
@@ -407,14 +405,19 @@
             <h2 data-i18n="complete_profile">Complete Profile</h2>
             <p data-i18n="few_details">Just a few more details.</p>
             <form id="profile-form">
-                <div class="form-group">
-                    <label data-i18n="upload_photo">Upload Photo</label>
-                    <input type="file" id="profile-photo" accept="image/*" required>
+                <div class="form-group" style="text-align:center; margin-bottom:2rem;">
+                    <label for="profile-photo" style="display:inline-block; position:relative; cursor:pointer;">
+                        <div style="width:100px; height:100px; background:#F3F4F6; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px dashed var(--border);">
+                            <i class="ri-camera-fill" style="font-size:2rem; color:var(--text-muted);"></i>
+                        </div>
+                        <input type="file" id="profile-photo" accept="image/*" style="display:none" required onchange="this.previousElementSibling.style.borderColor='var(--success)'">
+                        <span style="font-size:0.85rem; color:var(--primary); display:block; margin-top:5px;" data-i18n="upload_photo">Upload Photo</span>
+                    </label>
                 </div>
                 
                 <div id="worker-category-input" class="hidden form-group">
-                    <label data-i18n="select_category">Select Category</label>
                     <select id="category" required>
+                        <option value="" disabled selected>Select Category</option>
                         <option value="Labour">Labour Worker</option>
                         <option value="Carpenter">Carpenter</option>
                         <option value="Maid">Maid</option>
@@ -437,7 +440,7 @@
                         <option value="Mumbai">Mumbai</option>
                     </select>
                 </div>
-                <div class="form-group"><input type="text" id="address" placeholder="Full Address / Landmark" autocomplete="street-address" required></div>
+                <div class="form-group"><input type="text" id="address" placeholder="Full Address" autocomplete="street-address" required></div>
                 
                 <button type="submit" class="primary-btn" data-i18n="save_profile">Save Profile</button>
             </form>
@@ -446,8 +449,8 @@
         <!-- SCREEN 4: Employer Dashboard -->
         <section id="employer-dashboard" class="view hidden">
             <h2 data-i18n="find_workers">Find Workers</h2>
-            <div style="background:white; padding:1rem; border:1px solid var(--border); border-radius:12px; display:flex; gap:10px; margin-bottom:1.5rem;">
-                <select id="search-category" style="border:none; background:#f8f9fc; padding:10px;">
+            <div style="background:white; padding:10px; border:1px solid var(--border); border-radius:16px; display:flex; gap:10px; margin-bottom:1.5rem; box-shadow:0 4px 20px -5px rgba(0,0,0,0.05);">
+                <select id="search-category" style="border:none; background:transparent; padding:12px; font-weight:600; box-shadow:none;">
                     <option value="Labour">Labour Worker</option>
                     <option value="Carpenter">Carpenter</option>
                     <option value="Maid">Maid</option>
@@ -456,10 +459,31 @@
                     <option value="Electrician">Electrician</option>
                     <option value="Plumber">Plumber</option>
                 </select>
-                <button class="primary-btn" style="width:auto; padding:0 1.5rem;" onclick="findWorkers()">
+                <button class="primary-btn" style="width:auto; padding:0 1.5rem; border-radius:12px;" onclick="findWorkers()">
                     <i class="ri-search-line"></i>
                 </button>
             </div>
+            
+            <!-- Skeleton Loader (Hidden by default) -->
+            <div id="workers-skeleton" class="skeleton-wrapper hidden">
+                <div class="skeleton-card">
+                    <div class="skeleton sk-circle"></div>
+                    <div style="flex:1">
+                        <div class="skeleton sk-line"></div>
+                        <div class="skeleton sk-line short"></div>
+                    </div>
+                    <div class="skeleton sk-btn"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton sk-circle"></div>
+                    <div style="flex:1">
+                        <div class="skeleton sk-line"></div>
+                        <div class="skeleton sk-line short"></div>
+                    </div>
+                    <div class="skeleton sk-btn"></div>
+                </div>
+            </div>
+
             <div id="workers-list"></div>
         </section>
 
@@ -467,14 +491,14 @@
         <section id="worker-dashboard" class="view hidden">
             <h2 data-i18n="dashboard">My Dashboard</h2>
             
-            <div id="worker-waiting-card" class="role-card" style="cursor:default;">
-                <span style="background:#FFF7ED; color:#C2410C; padding:5px 12px; border-radius:20px; font-size:0.8rem; font-weight:700;" data-i18n="waiting">WAITING</span>
-                <p style="margin:15px 0; font-weight:600;" data-i18n="looking_for_jobs">Looking for jobs nearby...</p>
-                <div class="spinner-icon" style="color:var(--primary);"><i class="ri-loader-4-line"></i></div>
+            <div id="worker-waiting-card" class="role-card" style="cursor:default; margin-top:2rem;">
+                <span style="background:#FFF7ED; color:#C2410C; padding:8px 16px; border-radius:20px; font-size:0.8rem; font-weight:700;" data-i18n="waiting">WAITING</span>
+                <p style="margin:20px 0; font-weight:600;" data-i18n="looking_for_jobs">Looking for jobs nearby...</p>
+                <div class="spinner-icon" style="color:var(--primary); font-size:1.5rem;"><i class="ri-loader-4-line"></i></div>
             </div>
 
             <div id="worker-active-job-card" class="hidden">
-                <div class="toast success" style="margin:0 0 1rem 0; width:100%; justify-content:center;">
+                <div class="toast success" style="margin:0 0 1.5rem 0; width:100%; justify-content:center; position:relative; bottom:auto; left:auto; transform:none; animation:none; max-width:100%;">
                     <i class="ri-checkbox-circle-fill"></i> <span data-i18n="hired_msg">You have been hired!</span>
                 </div>
                 
@@ -485,17 +509,19 @@
                         <p style="margin:0; font-size:0.9rem; color:var(--text-muted);">
                             <i class="ri-map-pin-fill" style="color:var(--primary);"></i> <span id="employer-address"></span>
                         </p>
-                        <a id="employer-phone" href="#" class="phone-link"></a>
+                        <a id="employer-phone" href="#" class="primary-btn" style="margin-top:15px; background:var(--success); width:fit-content; padding:10px 20px; font-size:0.9rem;">
+                           <i class="ri-phone-fill"></i> Call Now
+                        </a>
                     </div>
                 </div>
 
-                <div id="otp-entry-area" style="margin-top:1.5rem;">
+                <div id="otp-entry-area" style="margin-top:2rem;">
                     <button class="primary-btn" onclick="showOtpInput(this)" data-i18n="start_job">I have arrived / Start Job</button>
                 </div>
                 
-                <div id="worker-otp-form" class="hidden" style="margin-top:1.5rem; background:white; padding:1.5rem; border-radius:12px; border:1px solid var(--border);">
-                    <h3 style="margin:0 0 1rem 0; font-size:1.1rem;" data-i18n="enter_otp">Enter OTP from Employer</h3>
-                    <input type="number" id="job-otp-input" placeholder="123456" style="font-size:1.5rem; letter-spacing:5px; text-align:center; margin-bottom:1rem;">
+                <div id="worker-otp-form" class="hidden" style="margin-top:1.5rem; background:white; padding:1.5rem; border-radius:16px; border:1px solid var(--border); box-shadow:0 10px 30px -10px rgba(0,0,0,0.1);">
+                    <h3 style="margin:0 0 1rem 0; font-size:1.1rem; text-align:center;" data-i18n="enter_otp">Enter OTP from Employer</h3>
+                    <input type="number" id="job-otp-input" placeholder="000000" style="font-size:2rem; letter-spacing:8px; text-align:center; margin-bottom:1.5rem; font-weight:700; color:var(--primary); border:2px dashed var(--border);">
                     <button class="primary-btn" onclick="verifyOtp()" data-i18n="verify">Verify & Complete</button>
                 </div>
             </div>
@@ -510,18 +536,18 @@
                 <img id="job-worker-photo" src="" alt="Wkr">
                 <div style="flex:1">
                     <h3 id="job-worker-name" style="margin:0;"></h3>
-                    <p style="color:var(--success); font-size:0.9rem; font-weight:600; margin:4px 0;">• Hired</p>
-                    <a id="job-worker-phone" href="#" class="phone-link"></a>
+                    <p style="color:var(--success); font-size:0.9rem; font-weight:700; margin:4px 0;">• Hired</p>
+                    <a id="job-worker-phone" href="#" class="primary-btn" style="background:var(--success); width:fit-content; padding:8px 16px; margin-top:10px; font-size:0.85rem;"><i class="ri-phone-fill"></i> Call</a>
                 </div>
             </div>
             
-            <div style="background:#FFF7ED; border:2px dashed #FB923C; border-radius:12px; padding:1.5rem; text-align:center; margin-top:1.5rem;">
-                <p style="margin:0; color:#9A3412; font-weight:600;" data-i18n="share_otp">Share OTP after work is done:</p>
-                <div id="generated-otp" style="font-size:2.5rem; font-weight:800; color:#C2410C; margin:10px 0; letter-spacing:4px;">------</div>
+            <div style="background:white; border:2px dashed #FB923C; border-radius:16px; padding:2rem 1rem; text-align:center; margin-top:2rem; box-shadow:0 10px 30px -5px rgba(251, 146, 60, 0.15);">
+                <p style="margin:0; color:#9A3412; font-weight:600; font-size:0.9rem; text-transform:uppercase; letter-spacing:1px;" data-i18n="share_otp">Share OTP when work is done</p>
+                <div id="generated-otp" style="font-size:3rem; font-weight:800; color:#C2410C; margin:15px 0; letter-spacing:6px; font-family:monospace;">------</div>
             </div>
 
-            <div id="employer-completion-msg" class="hidden" style="margin-top:1.5rem; text-align:center;">
-                <div class="toast success" style="width:100%; justify-content:center; margin-bottom:1rem;">
+            <div id="employer-completion-msg" class="hidden" style="margin-top:2rem; text-align:center;">
+                <div class="toast success" style="width:100%; justify-content:center; margin-bottom:1.5rem; position:relative; bottom:auto; left:auto; transform:none; animation:none; max-width:100%;">
                     <i class="ri-check-double-line"></i> <span data-i18n="work_completed">Work Completed!</span>
                 </div>
                 <button class="primary-btn" onclick="location.reload()" data-i18n="find_another">Find Another Worker</button>
@@ -543,8 +569,6 @@
                 looking_jobs: "I am looking for jobs",
                 welcome_back: "Welcome Back",
                 enter_details: "Enter your details to login.",
-                email: "Email Address",
-                password: "Password",
                 login_btn: "Login",
                 new_here: "New here?",
                 create_account: "Create an Account",
@@ -554,7 +578,6 @@
                 complete_profile: "Complete Profile",
                 few_details: "Just a few more details.",
                 upload_photo: "Upload Photo",
-                select_category: "Select Category",
                 save_profile: "Save Profile",
                 find_workers: "Find Workers",
                 dashboard: "My Dashboard",
@@ -566,7 +589,7 @@
                 verify: "Verify & Complete",
                 job_active: "Job Active",
                 worker_on_way: "Worker is on the way.",
-                share_otp: "Share OTP after work is done:",
+                share_otp: "Share OTP after work is done",
                 work_completed: "Work Completed!",
                 find_another: "Find Another Worker"
             },
@@ -579,8 +602,6 @@
                 looking_jobs: "मैं काम ढूंढ रहा हूँ",
                 welcome_back: "वापसी पर स्वागत है",
                 enter_details: "लॉगिन करने के लिए विवरण दर्ज करें।",
-                email: "ईमेल पता",
-                password: "पासवर्ड",
                 login_btn: "लॉगिन करें",
                 new_here: "नए हैं?",
                 create_account: "खाता बनाएं",
@@ -590,7 +611,6 @@
                 complete_profile: "प्रोफ़ाइल पूरी करें",
                 few_details: "बस कुछ और जानकारी।",
                 upload_photo: "फोटो अपलोड करें",
-                select_category: "श्रेणी चुनें",
                 save_profile: "प्रोफ़ाइल सहेजें",
                 find_workers: "कामगार ढूंढें",
                 dashboard: "मेरा डैशबोर्ड",
@@ -602,7 +622,7 @@
                 verify: "सत्यापित करें और पूरा करें",
                 job_active: "काम चालू है",
                 worker_on_way: "कामगार रास्ते में है।",
-                share_otp: "काम पूरा होने पर OTP साझा करें:",
+                share_otp: "काम पूरा होने पर OTP साझा करें",
                 work_completed: "काम पूरा हुआ!",
                 find_another: "दूसरा कामगार ढूंढें"
             },
@@ -615,8 +635,6 @@
                 looking_jobs: "ਮੈਂ ਕੰਮ ਲੱਭ ਰਿਹਾ ਹਾਂ",
                 welcome_back: "ਜੀ ਆਇਆਂ ਨੂੰ",
                 enter_details: "ਲਾਗਇਨ ਕਰਨ ਲਈ ਵੇਰਵੇ ਭਰੋ।",
-                email: "ਈਮੇਲ ਪਤਾ",
-                password: "ਪਾਸਵਰਡ",
                 login_btn: "ਲਾਗਇਨ",
                 new_here: "ਨਵੇਂ ਹੋ?",
                 create_account: "ਖਾਤਾ ਬਣਾਓ",
@@ -626,7 +644,6 @@
                 complete_profile: "ਪ੍ਰੋਫਾਈਲ ਪੂਰਾ ਕਰੋ",
                 few_details: "ਬਸ ਕੁਝ ਹੋਰ ਜਾਣਕਾਰੀ।",
                 upload_photo: "ਫੋਟੋ ਅਪਲੋਡ ਕਰੋ",
-                select_category: "ਸ਼੍ਰੇਣੀ ਚੁਣੋ",
                 save_profile: "ਸੇਵ ਕਰੋ",
                 find_workers: "ਕਾਮੇ ਲੱਭੋ",
                 dashboard: "ਮੇਰਾ ਡੈਸ਼ਬੋਰਡ",
@@ -638,7 +655,7 @@
                 verify: "ਪੂਰਾ ਕਰੋ",
                 job_active: "ਕੰਮ ਚੱਲ ਰਿਹਾ ਹੈ",
                 worker_on_way: "ਕਾਮਾ ਰਸਤੇ ਵਿੱਚ ਹੈ।",
-                share_otp: "ਕੰਮ ਹੋਣ 'ਤੇ OTP ਦਿਓ:",
+                share_otp: "ਕੰਮ ਹੋਣ 'ਤੇ OTP ਦਿਓ",
                 work_completed: "ਕੰਮ ਪੂਰਾ ਹੋ ਗਿਆ!",
                 find_another: "ਹੋਰ ਕਾਮਾ ਲੱਭੋ"
             }
@@ -679,7 +696,8 @@
             container.appendChild(el);
             setTimeout(() => {
                 el.style.opacity = '0';
-                setTimeout(() => el.remove(), 300);
+                el.style.transform = 'translateY(20px)';
+                setTimeout(() => el.remove(), 400);
             }, 3000);
         }
 
@@ -687,7 +705,7 @@
             if (isLoading) {
                 btn.dataset.originalText = btn.innerHTML;
                 btn.disabled = true;
-                btn.innerHTML = `<div class="spinner-icon"><i class="ri-loader-4-line"></i></div> ${text || 'Processing...'}`;
+                btn.innerHTML = `<div class="spinner-icon"><i class="ri-loader-4-line"></i></div>`;
             } else {
                 btn.disabled = false;
                 btn.innerHTML = btn.dataset.originalText;
@@ -719,7 +737,14 @@
 
         function showView(id) {
             document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
+            const newView = document.getElementById(id);
+            newView.classList.remove('hidden');
+            
+            // Re-trigger animation
+            newView.style.animation = 'none';
+            newView.offsetHeight; /* trigger reflow */
+            newView.style.animation = null; 
+
             const hideLogout = ['role-selection','auth-screen','language-selection', 'verify-email-screen'];
             document.getElementById('logoutBtn').classList.toggle('hidden', hideLogout.includes(id));
             
@@ -744,8 +769,7 @@
                 }
                 location.reload();
             } else {
-                if (role === 'worker') showView('language-selection');
-                else showView('language-selection'); // Changed: Everyone picks language
+                showView('language-selection');
             }
         }
 
@@ -773,8 +797,8 @@
                 document.getElementById('password').autocomplete = "current-password";
             } else {
                 title.textContent = t.create_account;
-                sub.textContent = t.enter_details; // Simplified
-                btn.textContent = t.create_account; // Reuse string
+                sub.textContent = t.enter_details;
+                btn.textContent = t.create_account;
                 toggle.innerHTML = `Member? <span onclick="toggleAuthMode()">${t.login_btn}</span>`;
                 document.getElementById('password').autocomplete = "new-password";
             }
@@ -816,9 +840,8 @@
             state.user = user;
             const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
 
-            const selectedRole = localStorage.getItem('rozgaar_role');
             if (profile) {
-                state.lang = profile.language || 'en'; // Sync lang from profile
+                state.lang = profile.language || 'en';
                 updateTranslations();
                 state.profile = profile;
                 state.role = profile.role;
@@ -890,21 +913,29 @@
 
         // --- EMPLOYER FEATURES ---
         async function findWorkers() {
-            // Return promise for voice support
             return new Promise(async (resolve) => {
                 const cat = document.getElementById('search-category').value;
                 const btn = document.querySelector('#employer-dashboard button');
-                setLoading(btn, true, "");
+                const list = document.getElementById('workers-list');
+                const skeleton = document.getElementById('workers-skeleton');
+
+                // UI State: Loading
+                list.innerHTML = '';
+                skeleton.classList.remove('hidden');
+                btn.disabled = true;
+
+                // Simulate smoother network feel
+                await new Promise(r => setTimeout(r, 800));
 
                 const { data } = await supabaseClient.from('profiles').select('*').eq('role', 'worker').eq('category', cat);
                 state.searchResult = data || [];
                 
-                const list = document.getElementById('workers-list');
-                list.innerHTML = '';
-                setLoading(btn, false);
+                // UI State: Done
+                skeleton.classList.add('hidden');
+                btn.disabled = false;
 
                 if (!data || !data.length) {
-                    list.innerHTML = `<div style="text-align:center; margin-top:2rem; color:var(--text-muted)"><i class="ri-ghost-smile-line" style="font-size:2rem"></i><p>No workers found nearby.</p></div>`;
+                    list.innerHTML = `<div style="text-align:center; margin-top:2rem; color:var(--text-muted); animation:fadeInItem 0.5s ease"><i class="ri-ghost-smile-line" style="font-size:2rem"></i><p>No workers found nearby.</p></div>`;
                     resolve(false);
                     return;
                 }
@@ -915,7 +946,7 @@
                         <div class="worker-card">
                             <img src="${img}">
                             <div style="flex:1">
-                                <h3 style="margin:0; font-size:1.1rem;">${w.full_name}</h3>
+                                <h3 style="margin:0; font-size:1.1rem; font-weight:700;">${w.full_name}</h3>
                                 <p style="margin:0; font-size:0.9rem; color:var(--text-muted);"><i class="ri-map-pin-line"></i> ${w.city}</p>
                             </div>
                             <button class="primary-btn hire-btn" style="width:auto; padding:10px 20px; font-size:0.9rem;" data-id="${w.id}" onclick="initiateHire('${w.id}')">Hire ₹60</button>
@@ -928,8 +959,7 @@
 
         async function initiateHire(wid) {
             const worker = state.searchResult.find(w => w.id === wid);
-            // Just basic toast because voice flow might be fast
-            showToast("Processing Payment for " + worker.full_name);
+            showToast("Processing Payment...", "success");
 
             try {
                 const res = await fetch("https://razorpay-snll.onrender.com/create-order", { method: "POST", headers: {"Content-Type":"application/json"} });
@@ -966,7 +996,6 @@
             
             const link = document.getElementById('job-worker-phone');
             link.href = `tel:${worker.phone}`;
-            link.innerHTML = `<i class="ri-phone-fill"></i> Call: ${worker.phone}`;
             
             const img = document.getElementById('job-worker-photo');
             img.src = (worker.photo_url && !worker.photo_url.includes('placeholder')) ? worker.photo_url : 'https://via.placeholder.com/150';
@@ -1003,7 +1032,6 @@
                     
                     const link = document.getElementById('employer-phone');
                     link.href = `tel:${emp.phone}`;
-                    link.innerHTML = `<i class="ri-phone-fill"></i> Call: ${emp.phone}`;
 
                     const img = document.getElementById('employer-photo');
                     img.src = (emp.photo_url && !emp.photo_url.includes('placeholder')) ? emp.photo_url : 'https://via.placeholder.com/150';
@@ -1040,7 +1068,7 @@
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.continuous = false;
-            recognition.lang = 'en-US'; // We will accept Hinglish/English commands
+            recognition.lang = 'en-US';
             recognition.interimResults = false;
 
             recognition.onstart = () => {
@@ -1055,21 +1083,17 @@
                 const transcript = event.results[0][0].transcript.toLowerCase();
                 console.log("Voice Command:", transcript);
 
-                // Play Response Audio (Promise wrapper)
                 try {
                     const audio = document.getElementById('response-audio');
-                    await audio.play().catch(e => console.log("Audio play blocked or file missing"));
-                    // Wait for a second roughly if audio plays, or just proceed
+                    await audio.play().catch(e => {});
                 } catch(e) {}
 
-                // COMMAND 1: HIRE [CATEGORY]
                 if (transcript.includes('hire') && state.role === 'employer') {
                     const categories = ['plumber', 'carpenter', 'cook', 'maid', 'labour', 'cleaner', 'electrician'];
                     const foundCat = categories.find(c => transcript.includes(c));
                     
                     if (foundCat) {
                         const select = document.getElementById('search-category');
-                        // Map spoken word to option value (capitalized)
                         const val = foundCat.charAt(0).toUpperCase() + foundCat.slice(1);
                         select.value = val;
                         
@@ -1078,7 +1102,6 @@
                         
                         if (success) {
                             setTimeout(() => {
-                                // Click the first hire button automatically
                                 const firstBtn = document.querySelector('.hire-btn');
                                 if (firstBtn) firstBtn.click();
                             }, 500); 
@@ -1087,23 +1110,13 @@
                         showToast("Category not understood. Try 'Hire Plumber'", 'error');
                     }
                 }
-                
-                // COMMAND 2: CALL EMPLOYER
                 else if (transcript.includes('call employer') && state.role === 'worker') {
                     const link = document.getElementById('employer-phone');
-                    if (link && link.href) {
-                        showToast("Voice: Calling Employer...");
-                        link.click();
-                    }
+                    if (link && link.href) link.click();
                 }
-                
-                // COMMAND 3: CALL WORKER
                 else if (transcript.includes('call worker') && state.role === 'employer') {
                     const link = document.getElementById('job-worker-phone');
-                    if (link && link.href) {
-                        showToast("Voice: Calling Worker...");
-                        link.click();
-                    }
+                    if (link && link.href) link.click();
                 } 
                 else {
                     showToast("Command not recognized", 'error');

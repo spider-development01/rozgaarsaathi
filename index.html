@@ -19,7 +19,7 @@
 
     <style>
         /* --- CSS VARIABLES & RESET --- */
-                :root {
+        :root {
             --primary: #4E3BF7;      
             --primary-dark: #1c146a;
             --secondary: #7300ff;    
@@ -33,7 +33,6 @@
             --shadow: 0 10px 40px -10px rgba(78, 59, 247, 0.1);
             --radius: 16px;
         }
-
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
@@ -515,7 +514,9 @@
         // --- SETUP ---
         const SUPABASE_URL = 'https://prjwnbctmwkrscdsmtkh.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByanduYmN0bXdrcnNjZHNtdGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MjkwMDksImV4cCI6MjA3OTIwNTAwOX0.28WSuMkPd76qUSjGMz5KkKx-8cGtx17-0PgLYj8DfGM';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // FIXED: Renamed 'supabase' to 'supabaseClient' to avoid conflict with the CDN library global variable
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let state = {
             user: null,
@@ -565,7 +566,7 @@
 
         // --- APP FLOW ---
         window.onload = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) handleSession(session.user);
             else {
                 localStorage.removeItem('rozgaar_role');
@@ -585,8 +586,7 @@
             state.role = role;
             localStorage.setItem('rozgaar_role', role);
             if (state.user) {
-                // Prevent existing users from switching roles by just clicking back
-                const { data: profile } = await supabase.from('profiles').select('role').eq('id', state.user.id).single();
+                const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', state.user.id).single();
                 if(profile && profile.role !== role) {
                      alert(`You are registered as a ${profile.role}. Please login as a ${profile.role}.`);
                      location.reload();
@@ -641,12 +641,12 @@
             try {
                 if (state.isLoginMode) {
                     // LOGIN
-                    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
                     handleSession(data.user);
                 } else {
                     // SIGNUP
-                    const { data, error } = await supabase.auth.signUp({
+                    const { data, error } = await supabaseClient.auth.signUp({
                         email, 
                         password,
                         options: { 
@@ -655,7 +655,6 @@
                     });
                     if (error) throw error;
                     
-                    // SUCCESS: Don't login yet. Show Verify Screen.
                     document.getElementById('sent-email').textContent = email;
                     showView('verify-email-screen');
                     setLoading(btn, false);
@@ -669,14 +668,13 @@
         // --- MAIN LOGIC ---
         async function handleSession(user) {
             state.user = user;
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
 
             const selectedRole = localStorage.getItem('rozgaar_role');
             
             if (profile) {
                 if (selectedRole && profile.role !== selectedRole) {
-                    // Role Mismatch Detected
-                    await supabase.auth.signOut();
+                    await supabaseClient.auth.signOut();
                     showToast(`Wrong Account: You are a ${profile.role}, not a ${selectedRole}.`, 'error');
                     setTimeout(() => {
                         localStorage.removeItem('rozgaar_role');
@@ -697,7 +695,6 @@
                     listenForJobs();
                 }
             } else {
-                // No profile yet -> Onboarding
                 showView('onboarding-screen');
                 if(state.role === 'employer') {
                     document.getElementById('worker-category-input').classList.add('hidden');
@@ -711,7 +708,7 @@
 
         async function handleLogout() {
             if(confirm("Log out of Rozgaar Saathi?")) {
-                await supabase.auth.signOut();
+                await supabaseClient.auth.signOut();
                 localStorage.clear();
                 location.reload();
             }
@@ -729,8 +726,8 @@
             try {
                 if (file) {
                     const fileName = `${Date.now()}-${file.name}`;
-                    await supabase.storage.from('avatars').upload(fileName, file);
-                    const res = supabase.storage.from('avatars').getPublicUrl(fileName);
+                    await supabaseClient.storage.from('avatars').upload(fileName, file);
+                    const res = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
                     publicUrl = res.data.publicUrl;
                 }
 
@@ -747,7 +744,7 @@
                     language: state.lang
                 };
 
-                const { error } = await supabase.from('profiles').insert(payload);
+                const { error } = await supabaseClient.from('profiles').insert(payload);
                 if (error) throw error;
                 location.reload();
             } catch(err) {
@@ -762,7 +759,7 @@
             const btn = document.querySelector('#employer-dashboard button');
             setLoading(btn, true, "");
 
-            const { data } = await supabase.from('profiles').select('*').eq('role', 'worker').eq('category', cat);
+            const { data } = await supabaseClient.from('profiles').select('*').eq('role', 'worker').eq('category', cat);
             state.searchResult = data || [];
             
             const list = document.getElementById('workers-list');
@@ -820,7 +817,7 @@
 
         async function createJob(worker) {
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
-            await supabase.from('jobs').insert({ employer_id: state.user.id, worker_id: worker.id, otp: otp, status: 'hired' });
+            await supabaseClient.from('jobs').insert({ employer_id: state.user.id, worker_id: worker.id, otp: otp, status: 'hired' });
             showJobScreen(otp, worker);
         }
 
@@ -836,26 +833,26 @@
             const img = document.getElementById('job-worker-photo');
             img.src = (worker.photo_url && !worker.photo_url.includes('placeholder')) ? worker.photo_url : 'https://via.placeholder.com/150';
 
-            const channel = supabase.channel('job-track').on('postgres_changes', 
+            const channel = supabaseClient.channel('job-track').on('postgres_changes', 
                 { event: 'UPDATE', schema: 'public', table: 'jobs', filter: `employer_id=eq.${state.user.id}` }, 
                 (payload) => {
                     if (payload.new.status === 'completed') {
                         document.getElementById('employer-completion-msg').classList.remove('hidden');
-                        supabase.removeChannel(channel);
+                        supabaseClient.removeChannel(channel);
                     }
                 }
             ).subscribe();
         }
 
         async function checkActiveJobsEmployer() {
-            const { data } = await supabase.from('jobs').select('*, profiles:worker_id(*)').eq('employer_id', state.user.id).eq('status', 'hired').single();
+            const { data } = await supabaseClient.from('jobs').select('*, profiles:worker_id(*)').eq('employer_id', state.user.id).eq('status', 'hired').single();
             if(data) showJobScreen(data.otp, data.profiles);
         }
 
         // --- WORKER FEATURES ---
         async function listenForJobs() {
             const check = async () => {
-                const { data } = await supabase.from('jobs').select('*, profiles:employer_id(*)').eq('worker_id', state.user.id).eq('status', 'hired').single();
+                const { data } = await supabaseClient.from('jobs').select('*, profiles:employer_id(*)').eq('worker_id', state.user.id).eq('status', 'hired').single();
                 if (data) {
                     state.activeJob = data;
                     const emp = data.profiles;
@@ -875,7 +872,7 @@
                 }
             };
             check();
-            supabase.channel('worker-listen').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs', filter: `worker_id=eq.${state.user.id}` }, check).subscribe();
+            supabaseClient.channel('worker-listen').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs', filter: `worker_id=eq.${state.user.id}` }, check).subscribe();
         }
 
         function showOtpInput(btn) {
@@ -889,7 +886,7 @@
             setLoading(btn, true, "Verifying...");
 
             if (input.value == state.activeJob.otp) {
-                await supabase.from('jobs').update({ status: 'completed' }).eq('id', state.activeJob.id);
+                await supabaseClient.from('jobs').update({ status: 'completed' }).eq('id', state.activeJob.id);
                 showToast("Job Completed Successfully!", 'success');
                 setTimeout(() => location.reload(), 2000);
             } else {
@@ -897,13 +894,12 @@
                 setLoading(btn, false);
             }
         }
-        // When the page loads, immediately wake it up
-fetch("https://razorpay-snll.onrender.com/create-order");
 
-// Keep sending pings every 3 minutes while the user is on the site
-setInterval(() => {
-  fetch("https://razorpay-snll.onrender.com/create-order");
-}, 180000); // 180000 ms = 3 minutes
+        // Keep backend alive
+        fetch("https://razorpay-snll.onrender.com/create-order");
+        setInterval(() => {
+          fetch("https://razorpay-snll.onrender.com/create-order");
+        }, 180000);
 
     </script>
 </body>

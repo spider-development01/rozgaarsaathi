@@ -94,6 +94,7 @@
             margin: 0 auto;
             padding: 2rem 1.5rem;
             min-height: calc(100vh - 70px);
+            padding-bottom: 100px; /* Space for mic button */
         }
 
         .view { animation: fadeIn 0.4s ease-out forwards; }
@@ -175,10 +176,34 @@
             font-size: 1.2rem;
         }
 
+        /* --- MIC BUTTON --- */
+        .mic-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+        .mic-btn:active { transform: scale(0.9); }
+        .mic-listening { background: var(--danger); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
         /* --- TOAST NOTIFICATIONS --- */
         #toast-container {
             position: fixed;
-            bottom: 20px;
+            bottom: 100px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 9999;
@@ -299,29 +324,36 @@
         </button>
     </header>
 
+    <!-- Voice Button -->
+    <button id="mic-btn" class="mic-btn hidden" onclick="toggleVoice()">
+        <i class="ri-mic-fill"></i>
+    </button>
+    <!-- Hidden audio element for response -->
+    <audio id="response-audio" src="response.mp3" preload="auto"></audio>
+
     <main id="app">
         
         <!-- SCREEN 1: Role Selection -->
         <section id="role-selection" class="view">
-            <h2>Who are you?</h2>
-            <p>Select your role to get started.</p>
+            <h2 data-i18n="who_are_you">Who are you?</h2>
+            <p data-i18n="select_role">Select your role to get started.</p>
             <div class="card-container">
                 <div onclick="selectRole('employer')" class="role-card">
                     <i class="ri-building-4-line"></i>
-                    <h3>Employer</h3>
-                    <span style="color:var(--text-muted)">I want to hire workers</span>
+                    <h3 data-i18n="employer">Employer</h3>
+                    <span style="color:var(--text-muted)" data-i18n="hire_workers">I want to hire workers</span>
                 </div>
                 <div onclick="selectRole('worker')" class="role-card">
                     <i class="ri-hammer-line"></i>
-                    <h3>Worker</h3>
-                    <span style="color:var(--text-muted)">I am looking for jobs</span>
+                    <h3 data-i18n="worker">Worker</h3>
+                    <span style="color:var(--text-muted)" data-i18n="looking_jobs">I am looking for jobs</span>
                 </div>
             </div>
         </section>
 
         <!-- SCREEN 1.5: Language -->
         <section id="language-selection" class="view hidden">
-            <h2>Select Language</h2>
+            <h2>Select Language / भाषा चुनें / ਭਾਸ਼ਾ ਚੁਣੋ</h2>
             <div class="card-container">
                 <button class="primary-btn" style="background:white; color:var(--text-main); border:1px solid var(--border); justify-content:space-between" onclick="setLanguage('en')">English <i class="ri-arrow-right-s-line"></i></button>
                 <button class="primary-btn" style="background:white; color:var(--text-main); border:1px solid var(--border); justify-content:space-between" onclick="setLanguage('hi')">Hindi (हिंदी) <i class="ri-arrow-right-s-line"></i></button>
@@ -331,16 +363,16 @@
 
         <!-- SCREEN 2: Auth -->
         <section id="auth-screen" class="view hidden">
-            <h2 id="auth-title">Welcome Back</h2>
-            <p id="auth-subtitle">Enter your details to login.</p>
+            <h2 id="auth-title" data-i18n="welcome_back">Welcome Back</h2>
+            <p id="auth-subtitle" data-i18n="enter_details">Enter your details to login.</p>
             
             <form id="auth-form">
                 <div class="form-group">
-                    <label>Email Address</label>
+                    <label data-i18n="email">Email Address</label>
                     <input type="email" id="email" placeholder="name@example.com" autocomplete="email" required>
                 </div>
                 <div class="form-group">
-                    <label>Password</label>
+                    <label data-i18n="password">Password</label>
                     <div class="password-wrapper">
                         <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" required>
                         <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" aria-label="Toggle Password">
@@ -350,49 +382,38 @@
                 </div>
                 
                 <button type="submit" class="primary-btn" id="auth-btn">
-                    <span>Login</span> <i class="ri-arrow-right-line"></i>
+                    <span data-i18n="login_btn">Login</span> <i class="ri-arrow-right-line"></i>
                 </button>
 
                 <div class="auth-toggle">
-                    <p id="toggle-text">New here? <span onclick="toggleAuthMode()">Create an Account</span></p>
+                    <p id="toggle-text"><span data-i18n="new_here">New here?</span> <span onclick="toggleAuthMode()" data-i18n="create_account">Create an Account</span></p>
                 </div>
             </form>
         </section>
 
-        <!-- SCREEN 2.5: Verify Email (NEW) -->
+        <!-- SCREEN 2.5: Verify Email -->
         <section id="verify-email-screen" class="view hidden" style="text-align:center; padding-top:3rem;">
             <div style="background:#EFF6FF; width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem auto;">
                 <i class="ri-mail-send-line" style="font-size:2.5rem; color:var(--primary);"></i>
             </div>
-            <h2>Check your Inbox</h2>
-            <p>We have sent a verification link to <br><strong id="sent-email" style="color:var(--text-main)"></strong></p>
-            
-            <!-- Loading Icon -->
-            <div class="spinner-icon" style="color:var(--primary); font-size:2.5rem; margin:2rem 0;">
-                <i class="ri-loader-4-line"></i>
-            </div>
-
-            <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:2rem;">
-                Click the link in the email to verify your account and continue.
-            </p>
-
-            <button class="primary-btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border);" onclick="location.reload()">
-                I have verified
-            </button>
+            <h2 data-i18n="check_inbox">Check your Inbox</h2>
+            <p><span data-i18n="email_sent">We have sent a verification link to</span> <br><strong id="sent-email" style="color:var(--text-main)"></strong></p>
+            <div class="spinner-icon" style="color:var(--primary); font-size:2.5rem; margin:2rem 0;"><i class="ri-loader-4-line"></i></div>
+            <button class="primary-btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border);" onclick="location.reload()" data-i18n="verified_btn">I have verified</button>
         </section>
 
         <!-- SCREEN 3: Profile Setup -->
         <section id="onboarding-screen" class="view hidden">
-            <h2>Complete Profile</h2>
-            <p>Just a few more details.</p>
+            <h2 data-i18n="complete_profile">Complete Profile</h2>
+            <p data-i18n="few_details">Just a few more details.</p>
             <form id="profile-form">
                 <div class="form-group">
-                    <label>Upload Photo</label>
+                    <label data-i18n="upload_photo">Upload Photo</label>
                     <input type="file" id="profile-photo" accept="image/*" required>
                 </div>
                 
                 <div id="worker-category-input" class="hidden form-group">
-                    <label>Select Category</label>
+                    <label data-i18n="select_category">Select Category</label>
                     <select id="category" required>
                         <option value="Labour">Labour Worker</option>
                         <option value="Carpenter">Carpenter</option>
@@ -418,13 +439,13 @@
                 </div>
                 <div class="form-group"><input type="text" id="address" placeholder="Full Address / Landmark" autocomplete="street-address" required></div>
                 
-                <button type="submit" class="primary-btn">Save Profile</button>
+                <button type="submit" class="primary-btn" data-i18n="save_profile">Save Profile</button>
             </form>
         </section>
 
-        <!-- SCREEN 4: Employer Search -->
+        <!-- SCREEN 4: Employer Dashboard -->
         <section id="employer-dashboard" class="view hidden">
-            <h2>Find Workers</h2>
+            <h2 data-i18n="find_workers">Find Workers</h2>
             <div style="background:white; padding:1rem; border:1px solid var(--border); border-radius:12px; display:flex; gap:10px; margin-bottom:1.5rem;">
                 <select id="search-category" style="border:none; background:#f8f9fc; padding:10px;">
                     <option value="Labour">Labour Worker</option>
@@ -444,17 +465,17 @@
 
         <!-- SCREEN 5: Worker Dashboard -->
         <section id="worker-dashboard" class="view hidden">
-            <h2>My Dashboard</h2>
+            <h2 data-i18n="dashboard">My Dashboard</h2>
             
             <div id="worker-waiting-card" class="role-card" style="cursor:default;">
-                <span style="background:#FFF7ED; color:#C2410C; padding:5px 12px; border-radius:20px; font-size:0.8rem; font-weight:700;">WAITING</span>
-                <p style="margin:15px 0; font-weight:600;">Looking for jobs nearby...</p>
+                <span style="background:#FFF7ED; color:#C2410C; padding:5px 12px; border-radius:20px; font-size:0.8rem; font-weight:700;" data-i18n="waiting">WAITING</span>
+                <p style="margin:15px 0; font-weight:600;" data-i18n="looking_for_jobs">Looking for jobs nearby...</p>
                 <div class="spinner-icon" style="color:var(--primary);"><i class="ri-loader-4-line"></i></div>
             </div>
 
             <div id="worker-active-job-card" class="hidden">
                 <div class="toast success" style="margin:0 0 1rem 0; width:100%; justify-content:center;">
-                    <i class="ri-checkbox-circle-fill"></i> You have been hired!
+                    <i class="ri-checkbox-circle-fill"></i> <span data-i18n="hired_msg">You have been hired!</span>
                 </div>
                 
                 <div class="worker-card active-job-profile">
@@ -469,21 +490,21 @@
                 </div>
 
                 <div id="otp-entry-area" style="margin-top:1.5rem;">
-                    <button class="primary-btn" onclick="showOtpInput(this)">I have arrived / Start Job</button>
+                    <button class="primary-btn" onclick="showOtpInput(this)" data-i18n="start_job">I have arrived / Start Job</button>
                 </div>
                 
                 <div id="worker-otp-form" class="hidden" style="margin-top:1.5rem; background:white; padding:1.5rem; border-radius:12px; border:1px solid var(--border);">
-                    <h3 style="margin:0 0 1rem 0; font-size:1.1rem;">Enter OTP from Employer</h3>
+                    <h3 style="margin:0 0 1rem 0; font-size:1.1rem;" data-i18n="enter_otp">Enter OTP from Employer</h3>
                     <input type="number" id="job-otp-input" placeholder="123456" style="font-size:1.5rem; letter-spacing:5px; text-align:center; margin-bottom:1rem;">
-                    <button class="primary-btn" onclick="verifyOtp()">Verify & Complete</button>
+                    <button class="primary-btn" onclick="verifyOtp()" data-i18n="verify">Verify & Complete</button>
                 </div>
             </div>
         </section>
 
         <!-- SCREEN 6: Job In Progress (Employer) -->
         <section id="employer-job-screen" class="view hidden">
-            <h2>Job Active</h2>
-            <p>Worker is on the way.</p>
+            <h2 data-i18n="job_active">Job Active</h2>
+            <p data-i18n="worker_on_way">Worker is on the way.</p>
 
             <div class="worker-card active-job-profile">
                 <img id="job-worker-photo" src="" alt="Wkr">
@@ -495,15 +516,15 @@
             </div>
             
             <div style="background:#FFF7ED; border:2px dashed #FB923C; border-radius:12px; padding:1.5rem; text-align:center; margin-top:1.5rem;">
-                <p style="margin:0; color:#9A3412; font-weight:600;">Share OTP after work is done:</p>
+                <p style="margin:0; color:#9A3412; font-weight:600;" data-i18n="share_otp">Share OTP after work is done:</p>
                 <div id="generated-otp" style="font-size:2.5rem; font-weight:800; color:#C2410C; margin:10px 0; letter-spacing:4px;">------</div>
             </div>
 
             <div id="employer-completion-msg" class="hidden" style="margin-top:1.5rem; text-align:center;">
                 <div class="toast success" style="width:100%; justify-content:center; margin-bottom:1rem;">
-                    <i class="ri-check-double-line"></i> Work Completed!
+                    <i class="ri-check-double-line"></i> <span data-i18n="work_completed">Work Completed!</span>
                 </div>
-                <button class="primary-btn" onclick="location.reload()">Find Another Worker</button>
+                <button class="primary-btn" onclick="location.reload()" data-i18n="find_another">Find Another Worker</button>
             </div>
         </section>
 
@@ -511,11 +532,121 @@
 
     <!-- LOGIC -->
     <script>
+        // --- TRANSLATIONS ---
+        const dictionary = {
+            en: {
+                who_are_you: "Who are you?",
+                select_role: "Select your role to get started.",
+                employer: "Employer",
+                worker: "Worker",
+                hire_workers: "I want to hire workers",
+                looking_jobs: "I am looking for jobs",
+                welcome_back: "Welcome Back",
+                enter_details: "Enter your details to login.",
+                email: "Email Address",
+                password: "Password",
+                login_btn: "Login",
+                new_here: "New here?",
+                create_account: "Create an Account",
+                check_inbox: "Check your Inbox",
+                email_sent: "We have sent a verification link to",
+                verified_btn: "I have verified",
+                complete_profile: "Complete Profile",
+                few_details: "Just a few more details.",
+                upload_photo: "Upload Photo",
+                select_category: "Select Category",
+                save_profile: "Save Profile",
+                find_workers: "Find Workers",
+                dashboard: "My Dashboard",
+                waiting: "WAITING",
+                looking_for_jobs: "Looking for jobs nearby...",
+                hired_msg: "You have been hired!",
+                start_job: "I have arrived / Start Job",
+                enter_otp: "Enter OTP from Employer",
+                verify: "Verify & Complete",
+                job_active: "Job Active",
+                worker_on_way: "Worker is on the way.",
+                share_otp: "Share OTP after work is done:",
+                work_completed: "Work Completed!",
+                find_another: "Find Another Worker"
+            },
+            hi: {
+                who_are_you: "आप कौन हैं?",
+                select_role: "शुरू करने के लिए अपनी भूमिका चुनें।",
+                employer: "नियोक्ता (Employer)",
+                worker: "कामगार (Worker)",
+                hire_workers: "मुझे काम के लिए लोग चाहिए",
+                looking_jobs: "मैं काम ढूंढ रहा हूँ",
+                welcome_back: "वापसी पर स्वागत है",
+                enter_details: "लॉगिन करने के लिए विवरण दर्ज करें।",
+                email: "ईमेल पता",
+                password: "पासवर्ड",
+                login_btn: "लॉगिन करें",
+                new_here: "नए हैं?",
+                create_account: "खाता बनाएं",
+                check_inbox: "अपना इनबॉक्स चेक करें",
+                email_sent: "हमने सत्यापन लिंक भेजा है",
+                verified_btn: "मैंने सत्यापित कर लिया है",
+                complete_profile: "प्रोफ़ाइल पूरी करें",
+                few_details: "बस कुछ और जानकारी।",
+                upload_photo: "फोटो अपलोड करें",
+                select_category: "श्रेणी चुनें",
+                save_profile: "प्रोफ़ाइल सहेजें",
+                find_workers: "कामगार ढूंढें",
+                dashboard: "मेरा डैशबोर्ड",
+                waiting: "प्रतीक्षा",
+                looking_for_jobs: "आसपास काम ढूंढ रहे हैं...",
+                hired_msg: "आपको काम मिल गया है!",
+                start_job: "मैं पहुँच गया / काम शुरू करें",
+                enter_otp: "मालिक से OTP दर्ज करें",
+                verify: "सत्यापित करें और पूरा करें",
+                job_active: "काम चालू है",
+                worker_on_way: "कामगार रास्ते में है।",
+                share_otp: "काम पूरा होने पर OTP साझा करें:",
+                work_completed: "काम पूरा हुआ!",
+                find_another: "दूसरा कामगार ढूंढें"
+            },
+            pb: {
+                who_are_you: "ਤੁਸੀਂ ਕੌਣ ਹੋ?",
+                select_role: "ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਆਪਣੀ ਭੂਮਿਕਾ ਚੁਣੋ।",
+                employer: "ਮਾਲਕ (Employer)",
+                worker: "ਕਾਮਾ (Worker)",
+                hire_workers: "ਮੈਨੂੰ ਕਾਮੇ ਚਾਹੀਦੇ ਹਨ",
+                looking_jobs: "ਮੈਂ ਕੰਮ ਲੱਭ ਰਿਹਾ ਹਾਂ",
+                welcome_back: "ਜੀ ਆਇਆਂ ਨੂੰ",
+                enter_details: "ਲਾਗਇਨ ਕਰਨ ਲਈ ਵੇਰਵੇ ਭਰੋ।",
+                email: "ਈਮੇਲ ਪਤਾ",
+                password: "ਪਾਸਵਰਡ",
+                login_btn: "ਲਾਗਇਨ",
+                new_here: "ਨਵੇਂ ਹੋ?",
+                create_account: "ਖਾਤਾ ਬਣਾਓ",
+                check_inbox: "ਆਪਣਾ ਇਨਬਾਕਸ ਚੈੱਕ ਕਰੋ",
+                email_sent: "ਅਸੀਂ ਲਿੰਕ ਭੇਜ ਦਿੱਤਾ ਹੈ",
+                verified_btn: "ਮੈਂ ਤਸਦੀਕ ਕਰ ਲਿਆ ਹੈ",
+                complete_profile: "ਪ੍ਰੋਫਾਈਲ ਪੂਰਾ ਕਰੋ",
+                few_details: "ਬਸ ਕੁਝ ਹੋਰ ਜਾਣਕਾਰੀ।",
+                upload_photo: "ਫੋਟੋ ਅਪਲੋਡ ਕਰੋ",
+                select_category: "ਸ਼੍ਰੇਣੀ ਚੁਣੋ",
+                save_profile: "ਸੇਵ ਕਰੋ",
+                find_workers: "ਕਾਮੇ ਲੱਭੋ",
+                dashboard: "ਮੇਰਾ ਡੈਸ਼ਬੋਰਡ",
+                waiting: "ਉਡੀਕ",
+                looking_for_jobs: "ਨੇੜੇ ਕੰਮ ਲੱਭ ਰਹੇ ਹਾਂ...",
+                hired_msg: "ਤੁਹਾਨੂੰ ਕੰਮ ਮਿਲ ਗਿਆ ਹੈ!",
+                start_job: "ਮੈਂ ਪਹੁੰਚ ਗਿਆ / ਕੰਮ ਸ਼ੁਰੂ ਕਰੋ",
+                enter_otp: "ਮਾਲਕ ਤੋਂ OTP ਭਰੋ",
+                verify: "ਪੂਰਾ ਕਰੋ",
+                job_active: "ਕੰਮ ਚੱਲ ਰਿਹਾ ਹੈ",
+                worker_on_way: "ਕਾਮਾ ਰਸਤੇ ਵਿੱਚ ਹੈ।",
+                share_otp: "ਕੰਮ ਹੋਣ 'ਤੇ OTP ਦਿਓ:",
+                work_completed: "ਕੰਮ ਪੂਰਾ ਹੋ ਗਿਆ!",
+                find_another: "ਹੋਰ ਕਾਮਾ ਲੱਭੋ"
+            }
+        };
+
         // --- SETUP ---
         const SUPABASE_URL = 'https://prjwnbctmwkrscdsmtkh.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByanduYmN0bXdrcnNjZHNtdGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MjkwMDksImV4cCI6MjA3OTIwNTAwOX0.28WSuMkPd76qUSjGMz5KkKx-8cGtx17-0PgLYj8DfGM';
-        
-        // FIXED: Renamed 'supabase' to 'supabaseClient' to avoid conflict with the CDN library global variable
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let state = {
@@ -529,6 +660,17 @@
         };
 
         // --- UI HELPERS ---
+        function updateTranslations() {
+            const t = dictionary[state.lang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) {
+                    if (el.tagName === 'INPUT') el.placeholder = t[key];
+                    else el.textContent = t[key];
+                }
+            });
+        }
+
         function showToast(msg, type = 'success') {
             const container = document.getElementById('toast-container');
             const el = document.createElement('div');
@@ -567,6 +709,7 @@
         // --- APP FLOW ---
         window.onload = async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
+            updateTranslations();
             if (session) handleSession(session.user);
             else {
                 localStorage.removeItem('rozgaar_role');
@@ -579,6 +722,13 @@
             document.getElementById(id).classList.remove('hidden');
             const hideLogout = ['role-selection','auth-screen','language-selection', 'verify-email-screen'];
             document.getElementById('logoutBtn').classList.toggle('hidden', hideLogout.includes(id));
+            
+            // Show mic button if logged in
+            if(id === 'employer-dashboard' || id === 'worker-dashboard' || id === 'employer-job-screen') {
+                document.getElementById('mic-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('mic-btn').classList.add('hidden');
+            }
         }
 
         // --- ROLE & LANG ---
@@ -588,20 +738,21 @@
             if (state.user) {
                 const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', state.user.id).single();
                 if(profile && profile.role !== role) {
-                     alert(`You are registered as a ${profile.role}. Please login as a ${profile.role}.`);
+                     alert(`Wrong account. Please login as ${profile.role}.`);
                      location.reload();
                      return;
                 }
                 location.reload();
             } else {
                 if (role === 'worker') showView('language-selection');
-                else showView('auth-screen');
+                else showView('language-selection'); // Changed: Everyone picks language
             }
         }
 
         function setLanguage(l) {
             state.lang = l;
             localStorage.setItem('rozgaar_lang', l);
+            updateTranslations();
             showView('auth-screen');
         }
 
@@ -612,49 +763,44 @@
             const sub = document.getElementById('auth-subtitle');
             const btn = document.querySelector('#auth-btn span');
             const toggle = document.querySelector('#toggle-text');
+            const t = dictionary[state.lang];
 
             if (state.isLoginMode) {
-                title.textContent = "Welcome Back";
-                sub.textContent = "Enter details to login.";
-                btn.textContent = "Login";
-                toggle.innerHTML = `New here? <span onclick="toggleAuthMode()">Create an Account</span>`;
+                title.textContent = t.welcome_back;
+                sub.textContent = t.enter_details;
+                btn.textContent = t.login_btn;
+                toggle.innerHTML = `${t.new_here} <span onclick="toggleAuthMode()">${t.create_account}</span>`;
                 document.getElementById('password').autocomplete = "current-password";
             } else {
-                title.textContent = "Create Account";
-                sub.textContent = "Join us to find work or workers.";
-                btn.textContent = "Sign Up";
-                toggle.innerHTML = `Already have an account? <span onclick="toggleAuthMode()">Login</span>`;
+                title.textContent = t.create_account;
+                sub.textContent = t.enter_details; // Simplified
+                btn.textContent = t.create_account; // Reuse string
+                toggle.innerHTML = `Member? <span onclick="toggleAuthMode()">${t.login_btn}</span>`;
                 document.getElementById('password').autocomplete = "new-password";
             }
         }
 
         document.getElementById('auth-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             if(!email || !password) return;
 
             const btn = document.getElementById('auth-btn');
-            setLoading(btn, true, state.isLoginMode ? "Logging in..." : "Creating Account...");
+            setLoading(btn, true);
 
             try {
                 if (state.isLoginMode) {
-                    // LOGIN
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
                     handleSession(data.user);
                 } else {
-                    // SIGNUP
                     const { data, error } = await supabaseClient.auth.signUp({
                         email, 
                         password,
-                        options: { 
-                            emailRedirectTo: 'https://rozgaar.codeinblack.tech/' 
-                        }
+                        options: { emailRedirectTo: 'https://rozgaar.codeinblack.tech/' }
                     });
                     if (error) throw error;
-                    
                     document.getElementById('sent-email').textContent = email;
                     showView('verify-email-screen');
                     setLoading(btn, false);
@@ -671,18 +817,9 @@
             const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
 
             const selectedRole = localStorage.getItem('rozgaar_role');
-            
             if (profile) {
-                if (selectedRole && profile.role !== selectedRole) {
-                    await supabaseClient.auth.signOut();
-                    showToast(`Wrong Account: You are a ${profile.role}, not a ${selectedRole}.`, 'error');
-                    setTimeout(() => {
-                        localStorage.removeItem('rozgaar_role');
-                        window.location.reload();
-                    }, 2000);
-                    return; 
-                }
-
+                state.lang = profile.language || 'en'; // Sync lang from profile
+                updateTranslations();
                 state.profile = profile;
                 state.role = profile.role;
                 localStorage.setItem('rozgaar_role', profile.role);
@@ -707,18 +844,16 @@
         }
 
         async function handleLogout() {
-            if(confirm("Log out of Rozgaar Saathi?")) {
-                await supabaseClient.auth.signOut();
-                localStorage.clear();
-                location.reload();
-            }
+            await supabaseClient.auth.signOut();
+            localStorage.clear();
+            location.reload();
         }
 
         // --- PROFILE SAVE ---
         document.getElementById('profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');
-            setLoading(btn, true, "Saving...");
+            setLoading(btn, true);
 
             const file = document.getElementById('profile-photo').files[0];
             let publicUrl = "https://via.placeholder.com/150";
@@ -755,41 +890,46 @@
 
         // --- EMPLOYER FEATURES ---
         async function findWorkers() {
-            const cat = document.getElementById('search-category').value;
-            const btn = document.querySelector('#employer-dashboard button');
-            setLoading(btn, true, "");
+            // Return promise for voice support
+            return new Promise(async (resolve) => {
+                const cat = document.getElementById('search-category').value;
+                const btn = document.querySelector('#employer-dashboard button');
+                setLoading(btn, true, "");
 
-            const { data } = await supabaseClient.from('profiles').select('*').eq('role', 'worker').eq('category', cat);
-            state.searchResult = data || [];
-            
-            const list = document.getElementById('workers-list');
-            list.innerHTML = '';
-            setLoading(btn, false);
+                const { data } = await supabaseClient.from('profiles').select('*').eq('role', 'worker').eq('category', cat);
+                state.searchResult = data || [];
+                
+                const list = document.getElementById('workers-list');
+                list.innerHTML = '';
+                setLoading(btn, false);
 
-            if (!data || !data.length) {
-                list.innerHTML = `<div style="text-align:center; margin-top:2rem; color:var(--text-muted)"><i class="ri-ghost-smile-line" style="font-size:2rem"></i><p>No workers found nearby.</p></div>`;
-                return;
-            }
+                if (!data || !data.length) {
+                    list.innerHTML = `<div style="text-align:center; margin-top:2rem; color:var(--text-muted)"><i class="ri-ghost-smile-line" style="font-size:2rem"></i><p>No workers found nearby.</p></div>`;
+                    resolve(false);
+                    return;
+                }
 
-            data.forEach(w => {
-                const img = (w.photo_url && !w.photo_url.includes('placeholder')) ? w.photo_url : 'https://via.placeholder.com/150';
-                list.innerHTML += `
-                    <div class="worker-card">
-                        <img src="${img}">
-                        <div style="flex:1">
-                            <h3 style="margin:0; font-size:1.1rem;">${w.full_name}</h3>
-                            <p style="margin:0; font-size:0.9rem; color:var(--text-muted);"><i class="ri-map-pin-line"></i> ${w.city}</p>
+                data.forEach(w => {
+                    const img = (w.photo_url && !w.photo_url.includes('placeholder')) ? w.photo_url : 'https://via.placeholder.com/150';
+                    list.innerHTML += `
+                        <div class="worker-card">
+                            <img src="${img}">
+                            <div style="flex:1">
+                                <h3 style="margin:0; font-size:1.1rem;">${w.full_name}</h3>
+                                <p style="margin:0; font-size:0.9rem; color:var(--text-muted);"><i class="ri-map-pin-line"></i> ${w.city}</p>
+                            </div>
+                            <button class="primary-btn hire-btn" style="width:auto; padding:10px 20px; font-size:0.9rem;" data-id="${w.id}" onclick="initiateHire('${w.id}')">Hire ₹60</button>
                         </div>
-                        <button class="primary-btn" style="width:auto; padding:10px 20px; font-size:0.9rem;" onclick="initiateHire('${w.id}')">Hire ₹60</button>
-                    </div>
-                `;
+                    `;
+                });
+                resolve(true);
             });
         }
 
         async function initiateHire(wid) {
             const worker = state.searchResult.find(w => w.id === wid);
-            const btn = document.activeElement;
-            setLoading(btn, true, "Wait...");
+            // Just basic toast because voice flow might be fast
+            showToast("Processing Payment for " + worker.full_name);
 
             try {
                 const res = await fetch("https://razorpay-snll.onrender.com/create-order", { method: "POST", headers: {"Content-Type":"application/json"} });
@@ -805,13 +945,11 @@
                     "order_id": order.id,
                     "handler": function (response) { createJob(worker); },
                     "prefill": { "name": state.profile.full_name, "contact": state.profile.phone },
-                    "theme": { "color": "#4E3BF7" },
-                    "modal": { "ondismiss": function() { setLoading(btn, false); } }
+                    "theme": { "color": "#4E3BF7" }
                 };
                 new Razorpay(options).open();
             } catch(err) {
                 showToast(err.message, 'error');
-                setLoading(btn, false);
             }
         }
 
@@ -883,16 +1021,102 @@
         async function verifyOtp() {
             const input = document.getElementById('job-otp-input');
             const btn = document.querySelector('#worker-otp-form button');
-            setLoading(btn, true, "Verifying...");
+            setLoading(btn, true);
 
             if (input.value == state.activeJob.otp) {
                 await supabaseClient.from('jobs').update({ status: 'completed' }).eq('id', state.activeJob.id);
-                showToast("Job Completed Successfully!", 'success');
+                showToast("Job Completed!", 'success');
                 setTimeout(() => location.reload(), 2000);
             } else {
-                showToast("Incorrect OTP. Try again.", 'error');
+                showToast("Incorrect OTP", 'error');
                 setLoading(btn, false);
             }
+        }
+
+        // --- VOICE RECOGNITION FEATURE ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US'; // We will accept Hinglish/English commands
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                document.getElementById('mic-btn').classList.add('mic-listening');
+            };
+
+            recognition.onend = () => {
+                document.getElementById('mic-btn').classList.remove('mic-listening');
+            };
+
+            recognition.onresult = async (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                console.log("Voice Command:", transcript);
+
+                // Play Response Audio (Promise wrapper)
+                try {
+                    const audio = document.getElementById('response-audio');
+                    await audio.play().catch(e => console.log("Audio play blocked or file missing"));
+                    // Wait for a second roughly if audio plays, or just proceed
+                } catch(e) {}
+
+                // COMMAND 1: HIRE [CATEGORY]
+                if (transcript.includes('hire') && state.role === 'employer') {
+                    const categories = ['plumber', 'carpenter', 'cook', 'maid', 'labour', 'cleaner', 'electrician'];
+                    const foundCat = categories.find(c => transcript.includes(c));
+                    
+                    if (foundCat) {
+                        const select = document.getElementById('search-category');
+                        // Map spoken word to option value (capitalized)
+                        const val = foundCat.charAt(0).toUpperCase() + foundCat.slice(1);
+                        select.value = val;
+                        
+                        showToast(`Voice: Finding ${val}...`);
+                        const success = await findWorkers();
+                        
+                        if (success) {
+                            setTimeout(() => {
+                                // Click the first hire button automatically
+                                const firstBtn = document.querySelector('.hire-btn');
+                                if (firstBtn) firstBtn.click();
+                            }, 500); 
+                        }
+                    } else {
+                        showToast("Category not understood. Try 'Hire Plumber'", 'error');
+                    }
+                }
+                
+                // COMMAND 2: CALL EMPLOYER
+                else if (transcript.includes('call employer') && state.role === 'worker') {
+                    const link = document.getElementById('employer-phone');
+                    if (link && link.href) {
+                        showToast("Voice: Calling Employer...");
+                        link.click();
+                    }
+                }
+                
+                // COMMAND 3: CALL WORKER
+                else if (transcript.includes('call worker') && state.role === 'employer') {
+                    const link = document.getElementById('job-worker-phone');
+                    if (link && link.href) {
+                        showToast("Voice: Calling Worker...");
+                        link.click();
+                    }
+                } 
+                else {
+                    showToast("Command not recognized", 'error');
+                }
+            };
+        }
+
+        function toggleVoice() {
+            if (!recognition) {
+                alert("Voice support not available in this browser.");
+                return;
+            }
+            recognition.start();
         }
 
         // Keep backend alive

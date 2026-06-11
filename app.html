@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1E0A6B" />
+
+  <!-- SEO -->
+  <title>Rozgaar Saathi — Find Work & Workers Near You</title>
+  <meta name="description" content="Rozgaar Saathi connects local employers with skilled workers — plumbers, electricians, cooks, maids and more — instantly and transparently." />
+  <meta name="keywords" content="rozgaar, job, worker, hire, labour, plumber, electrician, cook, maid, India, gig, local work" />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="codeinblack.tech" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Rozgaar Saathi — Find Work & Workers Near You" />
+  <meta property="og:description" content="Connect with verified local workers in seconds. No middleman, no fees." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://rozgaar.codeinblack.tech/" />
+  <meta property="og:image" content="https://rozgaar.codeinblack.tech/og-image.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Rozgaar Saathi" />
+  <meta name="twitter:description" content="Find trusted workers near you — instantly." />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://rozgaar.codeinblack.tech/" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!--
+  ═══════════════════════════════════════════════════
+  SUPABASE SQL SCHEMA — Run in your Supabase SQL Editor
+  ═══════════════════════════════════════════════════
+
+  -- 1. PROFILES TABLE
+  create table public.profiles (
+    id uuid references auth.users on delete cascade primary key,
+    role text not null check (role in ('employer','worker')),
+    full_name text not null,
+    phone text,
+    city text,
+    address text,
+    photo_url text,
+    category text,
+    language text default 'en',
+    is_available boolean default true,
+    rating numeric(3,2) default 5.0,
+    jobs_done integer default 0,
+    created_at timestamptz default now()
+  );
+
+  alter table public.profiles enable row level security;
+  create policy "Public read" on public.profiles for select using (true);
+  create policy "Own insert" on public.profiles for insert with check (auth.uid() = id);
+  create policy "Own update" on public.profiles for update using (auth.uid() = id);
+
+  -- 2. JOBS TABLE
+  create table public.jobs (
+    id uuid default gen_random_uuid() primary key,
+    employer_id uuid references public.profiles(id) on delete cascade,
+    worker_id uuid references public.profiles(id) on delete cascade,
+    otp text,
+    status text default 'hired' check (status in ('hired','in_progress','completed','cancelled')),
+    category text,
+    created_at timestamptz default now(),
+    completed_at timestamptz
+  );
+
+  alter table public.jobs enable row level security;
+  create policy "Participant read" on public.jobs for select using (auth.uid() = employer_id or auth.uid() = worker_id);
+  create policy "Employer insert" on public.jobs for insert with check (auth.uid() = employer_id);
+  create policy "Participant update" on public.jobs for update using (auth.uid() = employer_id or auth.uid() = worker_id);
+
+  -- 3. STORAGE BUCKET
+  insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+  create policy "Public read" on storage.objects for select using (bucket_id = 'avatars');
+  create policy "Auth upload" on storage.objects for insert with check (bucket_id = 'avatars' and auth.role() = 'authenticated');
+
+  -- 4. REALTIME — Enable on both tables in Supabase Dashboard > Database > Replication
+  ═══════════════════════════════════════════════════
+  -->
+
+  <style>
+    /* ─── TOKENS ─────────────────────────────────── */
+    :root {
+      --indigo-900: #0D0635;
+      --indigo-800: #1E0A6B;
+      --indigo-700: #2E1399;
+      --primary:    #6C47FF;
+      --primary-80: rgba(108,71,255,0.8);
+      --primary-10: rgba(108,71,255,0.08);
+      --amber:      #F59E0B;
+      --amber-10:   rgba(245,158,11,0.12);
+      --green:      #10B981;
+      --green-10:   rgba(16,185,129,0.1);
+      --red:        #EF4444;
+      --red-10:     rgba(239,68,68,0.1);
+      --bg:         #F5F4FF;
+      --surface:    #FFFFFF;
+      --surface-2:  #F9F8FF;
+      --border:     rgba(108,71,255,0.12);
+      --border-hard:#E2E8F0;
+      --text-1:     #0F172A;
+      --text-2:     #475569;
+      --text-3:     #94A3B8;
+      --radius-sm:  10px;
+      --radius:     16px;
+      --radius-lg:  24px;
+      --radius-xl:  32px;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow:     0 4px 16px rgba(108,71,255,0.08), 0 1px 4px rgba(0,0,0,0.05);
+      --shadow-lg:  0 20px 40px rgba(108,71,255,0.15), 0 4px 12px rgba(0,0,0,0.06);
+      --ease:       cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* ─── RESET ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      line-height: 1.6;
+      overscroll-behavior: none;
+      min-height: 100dvh;
+    }
+
+    img { display: block; max-width: 100%; }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; }
+    select, input { font-family: inherit; }
+
+    /* ─── HEADER ─────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      height: 64px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: var(--text-1);
+      letter-spacing: -0.4px;
+    }
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), #9B7BFF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(108,71,255,0.3);
+    }
+    .brand em { color: var(--primary); font-style: normal; }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    .lang-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--primary-10);
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      display: none;
+    }
+
+    .logout-btn {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-2);
+      background: var(--surface);
+      border: 1px solid var(--border-hard);
+      border-radius: 50px;
+      padding: 7px 14px;
+      transition: all 0.2s var(--ease);
+    }
+    .logout-btn:hover { background: var(--red-10); color: var(--red); border-color: rgba(239,68,68,0.2); }
+    .logout-btn.visible { display: flex; }
+
+    /* ─── MAIN ───────────────────────────────────── */
+    main {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 32px 20px 120px;
+      min-height: calc(100dvh - 64px);
+    }
+
+    /* ─── VIEW SYSTEM ────────────────────────────── */
+    .view { display: none; animation: fadeUp 0.5s var(--ease) both; }
+    .view.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px) scale(0.99); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ─── TYPOGRAPHY ─────────────────────────────── */
+    .page-title {
+      font-size: 1.9rem;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      line-height: 1.15;
+      color: var(--text-1);
+    }
+    .page-sub {
+      color: var(--text-2);
+      margin-top: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    .page-header { margin-bottom: 28px; }
+
+    .label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 6px;
+    }
+
+    /* ─── INPUTS ─────────────────────────────────── */
+    .form-group { margin-bottom: 14px; }
+
+    .input-wrap { position: relative; }
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-3);
+      font-size: 1.1rem;
+      pointer-events: none;
+      transition: color 0.2s;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 15px 16px 15px 42px;
+      background: var(--surface);
+      border: 1.5px solid var(--border-hard);
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-1);
+      transition: all 0.2s var(--ease);
+      -webkit-appearance: none;
+      box-shadow: var(--shadow-sm);
+    }
+    input.no-icon, select.no-icon { padding-left: 16px; }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(108,71,255,0.1);
+      background: white;
+    }
+    input:focus ~ .input-icon, select:focus ~ .input-icon { color: var(--primary); }
+    input.no-icon:focus { padding-left: 16px; }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
+
+    .eye-toggle {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-3);
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: color 0.2s;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+    .eye-toggle:hover { color: var(--primary); }
+
+    /* ─── BUTTONS ────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      border-radius: var(--radius);
+      padding: 15px 24px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.25s var(--ease);
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.2s;
+    }
+    .btn:hover::after { background: rgba(255,255,255,0.08); }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, #5035e8 100%);
+      color: white;
+      box-shadow: 0 8px 24px -4px rgba(108,71,255,0.4);
+    }
+    .btn-primary:hover { box-shadow: 0 12px 28px -4px rgba(108,71,255,0.5); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-2);
+      border: 1.5px solid var(--border-hard);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-ghost:hover { background: var(--surface); color: var(--text-1); }
+
+    .btn-sm { padding: 9px 18px; font-size: 0.85rem; border-radius: var(--radius-sm); width: auto; }
+    .btn-success { background: linear-gradient(135deg, #10B981, #059669); color: white; box-shadow: 0 6px 20px -4px rgba(16,185,129,0.4); }
+
+    /* ─── SPINNER ────────────────────────────────── */
+    .spin { animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-loading .btn-label { visibility: hidden; }
+    .btn-loading::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ─── SKELETON ───────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, #EEF0FF 0%, #E4E6FF 50%, #EEF0FF 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .sk-h { height: 14px; }
+    .sk-h-sm { height: 11px; width: 60%; }
+    .sk-avatar { width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0; }
+    .sk-chip { width: 70px; height: 32px; border-radius: 20px; }
+
+    .skeleton-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border-hard);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+    /* ─── ROLE CARDS ─────────────────────────────── */
+    .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+
+    .role-card {
+      background: var(--surface);
+      border: 2px solid var(--border-hard);
+      border-radius: var(--radius-xl);
+      padding: 28px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s var(--ease);
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+    .role-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--primary-10), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .role-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .role-card:hover::before { opacity: 1; }
+    .role-card:active { transform: scale(0.97); }
+
+    .role-card-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      background: var(--primary-10);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      color: var(--primary);
+      margin: 0 auto 14px;
+      transition: all 0.3s var(--ease);
+    }
+    .role-card:hover .role-card-icon { background: var(--primary); color: white; transform: scale(1.08) rotate(-3deg); }
+
+    .role-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; color: var(--text-1); }
+    .role-card p { font-size: 0.8rem; color: var(--text-2); font-weight: 500; }
+
+    /* ─── LANG CARDS ─────────────────────────────── */
+    .lang-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .lang-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border-hard);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+      box-shadow: var(--shadow-sm);
+    }
+    .lang-card:hover { border-color: var(--primary); background: var(--primary-10); transform: translateX(4px); }
+    .lang-card:active { transform: scale(0.99); }
+    .lang-card-left { display: flex; flex-direction: column; gap: 2px; }
+    .lang-card-name { font-weight: 700; font-size: 1rem; }
+    .lang-card-native { font-size: 0.8rem; color: var(--text-2); font-weight: 500; }
+
+    /* ─── AUTH ───────────────────────────────────── */
+    .auth-toggle { text-align: center; margin-top: 18px; font-size: 0.9rem; color: var(--text-2); font-weight: 500; }
+    .auth-toggle a { color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-3);
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin: 18px 0;
+    }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border-hard); }
+
+    /* ─── VERIFY EMAIL ───────────────────────────── */
+    .verify-icon {
+      width: 88px;
+      height: 88px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, #EEF0FF, #E4DDFF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.4rem;
+      color: var(--primary);
+      margin: 0 auto 24px;
+      box-shadow: 0 12px 32px -8px rgba(108,71,255,0.25);
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+    /* ─── PHOTO UPLOAD ───────────────────────────── */
+    .photo-upload-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .photo-ring {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: var(--primary-10);
+      border: 2px dashed var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.3s var(--ease);
+      position: relative;
+    }
+    .photo-ring:hover { background: rgba(108,71,255,0.15); transform: scale(1.03); }
+    .photo-ring img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; border-radius: 50%; }
+    .photo-ring i { font-size: 1.8rem; color: var(--primary); }
+    .photo-upload-area span { font-size: 0.8rem; font-weight: 600; color: var(--primary); }
+
+    /* ─── SEARCH BAR ─────────────────────────────── */
+    .search-bar {
+      background: var(--surface);
+      border: 1.5px solid var(--border-hard);
+      border-radius: var(--radius-lg);
+      padding: 10px 10px 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .search-bar select {
+      flex: 1;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+      padding: 8px 28px 8px 0;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .search-bar select:focus { box-shadow: none; background: transparent; }
+    .search-icon { color: var(--text-3); font-size: 1.1rem; flex-shrink: 0; }
+
+    /* ─── WORKER CARDS ───────────────────────────── */
+    .workers-grid { display: flex; flex-direction: column; gap: 12px; }
+
+    .worker-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border-hard);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.25s var(--ease);
+      animation: fadeUp 0.4s var(--ease) both;
+    }
+    .worker-card:hover { box-shadow: var(--shadow); border-color: rgba(108,71,255,0.2); transform: translateY(-1px); }
+
+    .worker-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      object-fit: cover;
+      background: var(--bg);
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .worker-info { flex: 1; min-width: 0; }
+    .worker-name { font-weight: 700; font-size: 1rem; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .worker-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .tag-city { background: #F0F9FF; color: #0369A1; }
+    .tag-rating { background: var(--amber-10); color: #92400E; }
+    .tag-jobs { background: var(--green-10); color: #065F46; }
+
+    .hire-btn {
+      background: linear-gradient(135deg, var(--primary), #5035e8);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s var(--ease);
+      box-shadow: 0 4px 12px -2px rgba(108,71,255,0.35);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hire-btn:hover { transform: scale(1.04); box-shadow: 0 6px 18px -2px rgba(108,71,255,0.45); }
+    .hire-btn:active { transform: scale(0.97); }
+    .hire-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ─── EMPTY STATE ────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      animation: fadeUp 0.5s var(--ease);
+    }
+    .empty-state i { font-size: 3rem; color: var(--text-3); display: block; margin-bottom: 12px; }
+    .empty-state p { color: var(--text-2); font-weight: 500; }
+
+    /* ─── STATUS CARDS ───────────────────────────── */
+    .status-banner {
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+    .status-hired {
+      background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+      border: 1.5px solid #6EE7B7;
+      color: #065F46;
+    }
+    .status-waiting {
+      background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
+      border: 1.5px solid #FCD34D;
+      color: #92400E;
+    }
+    .status-completed {
+      background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
+      border: 1.5px solid #93C5FD;
+      color: #1E40AF;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .pulse-dot::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      animation: pulse-ring 1.5s ease-out infinite;
+    }
+    .pulse-green { background: var(--green); }
+    .pulse-green::after { border: 2px solid var(--green); }
+    .pulse-amber { background: var(--amber); }
+    .pulse-amber::after { border: 2px solid var(--amber); }
+    @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+
+    /* ─── PROFILE CARD (job detail) ──────────────── */
+    .profile-job-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border-hard);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .profile-job-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: var(--shadow);
+    }
+    .profile-job-info { flex: 1; }
+    .profile-job-name { font-size: 1.15rem; font-weight: 800; color: var(--text-1); margin-bottom: 4px; }
+    .profile-job-meta { font-size: 0.85rem; color: var(--text-2); font-weight: 500; display: flex; align-items: center; gap: 5px; }
+    .call-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--green);
+      color: white;
+      border-radius: var(--radius-sm);
+      padding: 9px 16px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-top: 10px;
+      text-decoration: none;
+      transition: all 0.2s var(--ease);
+      box-shadow: 0 4px 14px -2px rgba(16,185,129,0.4);
+    }
+    .call-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -2px rgba(16,185,129,0.5); }
+
+    /* ─── OTP BOX ────────────────────────────────── */
+    .otp-display-card {
+      background: linear-gradient(135deg, var(--indigo-900), var(--indigo-700));
+      border-radius: var(--radius-xl);
+      padding: 28px 24px;
+      text-align: center;
+      box-shadow: 0 16px 40px -8px rgba(30,10,107,0.4);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .otp-display-card::before {
+      content: '';
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: rgba(108,71,255,0.3);
+      top: -80px;
+      right: -60px;
+      filter: blur(40px);
+    }
+    .otp-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 12px;
+    }
+    .otp-number {
+      font-size: 3rem;
+      font-weight: 900;
+      color: white;
+      letter-spacing: 10px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      text-shadow: 0 0 30px rgba(255,255,255,0.2);
+    }
+    .otp-hint {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 12px;
+      font-weight: 500;
+    }
+
+    .otp-input-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border-hard);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-top: 20px;
+    }
+    .otp-input-card h4 { font-size: 1rem; font-weight: 700; text-align: center; margin-bottom: 16px; color: var(--text-1); }
+    .otp-input {
+      font-size: 2.4rem !important;
+      font-weight: 800 !important;
+      letter-spacing: 12px;
+      text-align: center;
+      color: var(--primary) !important;
+      border-color: var(--primary) !important;
+      padding: 20px !important;
+      border-width: 2px !important;
+    }
+
+    /* ─── WAITING STATE ──────────────────────────── */
+    .waiting-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border-hard);
+      border-radius: var(--radius-xl);
+      padding: 40px 24px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      margin-top: 8px;
+    }
+    .waiting-lottie {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-10), #EEF0FF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: var(--primary);
+      margin: 0 auto 16px;
+      animation: float 3s ease-in-out infinite;
+    }
+    .waiting-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+    .waiting-card p { font-size: 0.9rem; color: var(--text-2); font-weight: 500; }
+    .waiting-dots { display: flex; justify-content: center; gap: 6px; margin-top: 20px; }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: dotBounce 1.4s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotBounce { 0%,80%,100% { transform: scale(0.5); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+    /* ─── MIC BUTTON ─────────────────────────────── */
+    #mic-btn {
+      display: none;
+      position: fixed;
+      bottom: 28px;
+      right: 24px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #5035e8);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 1.4rem;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      box-shadow: 0 8px 24px -4px rgba(108,71,255,0.5);
+      transition: all 0.3s var(--ease);
+    }
+    #mic-btn.show { display: flex; animation: fadeUp 0.4s var(--ease); }
+    #mic-btn:hover { transform: scale(1.06); }
+    #mic-btn.listening {
+      background: linear-gradient(135deg, var(--red), #c0392b);
+      box-shadow: 0 8px 24px -4px rgba(239,68,68,0.5);
+      animation: micPulse 1s ease-in-out infinite;
+    }
+    @keyframes micPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+    /* ─── TOAST ──────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      width: calc(100% - 40px);
+      max-width: 420px;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 18px;
+      border-radius: 50px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      animation: toastIn 0.4s var(--ease);
+    }
+    @keyframes toastIn { from { opacity:0; transform:translateY(20px) scale(0.92); } to { opacity:1; transform:translateY(0) scale(1); } }
+    .toast-success { background: #064E3B; color: #D1FAE5; }
+    .toast-error { background: #7F1D1D; color: #FEE2E2; }
+    .toast-info { background: #1E1B4B; color: #E0E7FF; }
+
+    /* ─── SECTION DIVIDER ────────────────────────── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      margin-top: 20px;
+    }
+
+    /* ─── RESPONSIVE ─────────────────────────────── */
+    @media (max-width: 480px) {
+      main { padding: 24px 16px 100px; }
+      .page-title { font-size: 1.65rem; }
+      .role-grid { grid-template-columns: 1fr 1fr; }
+      .otp-number { font-size: 2.4rem; letter-spacing: 8px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.1ms !important; }
+    }
+
+    /* ─── UTILITY ────────────────────────────────── */
+    .mt-4 { margin-top: 4px; }
+    .mt-8 { margin-top: 8px; }
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-20 { margin-top: 20px; }
+    .mt-24 { margin-top: 24px; }
+    .hidden { display: none !important; }
+    .text-center { text-align: center; }
+    .text-muted { color: var(--text-2); }
+    .fw-700 { font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <!-- TOAST -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- HEADER -->
+  <header role="banner">
+    <a href="/" class="brand" aria-label="Rozgaar Saathi home">
+      <div class="brand-icon" aria-hidden="true"><i class="ri-briefcase-4-fill"></i></div>
+      Rozgaar<em>Saathi</em>
+    </a>
+    <div class="header-actions">
+      <span class="lang-badge" id="langBadge" onclick="openLangPicker()" role="button" tabindex="0" aria-label="Change language">EN</span>
+      <button class="logout-btn" id="logoutBtn" onclick="handleLogout()" aria-label="Log out">
+        <i class="ri-logout-box-r-line" aria-hidden="true"></i> Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- MIC BUTTON -->
+  <button id="mic-btn" onclick="toggleVoice()" aria-label="Voice command">
+    <i class="ri-mic-fill" id="mic-icon" aria-hidden="true"></i>
+  </button>
+
+  <main id="app" role="main">
+
+    <!-- ── SCREEN 1: Role ─────────────────────────── -->
+    <section id="view-role" class="view" aria-label="Role selection">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="who_are_you">Who are you?</h1>
+        <p class="page-sub" data-i18n="select_role">Select your role to get started.</p>
+      </div>
+      <div class="role-grid">
+        <div class="role-card" onclick="selectRole('employer')" tabindex="0" role="button" aria-label="I am an Employer" onkeydown="if(event.key==='Enter')selectRole('employer')">
+          <div class="role-card-icon"><i class="ri-building-4-fill" aria-hidden="true"></i></div>
+          <h3 data-i18n="employer">Employer</h3>
+          <p data-i18n="hire_workers">Hire local workers</p>
+        </div>
+        <div class="role-card" onclick="selectRole('worker')" tabindex="0" role="button" aria-label="I am a Worker" onkeydown="if(event.key==='Enter')selectRole('worker')">
+          <div class="role-card-icon"><i class="ri-hammer-fill" aria-hidden="true"></i></div>
+          <h3 data-i18n="worker">Worker</h3>
+          <p data-i18n="looking_jobs">Find work nearby</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SCREEN 1.5: Language ───────────────────── -->
+    <section id="view-lang" class="view" aria-label="Language selection">
+      <div class="page-header">
+        <h1 class="page-title">Choose Language</h1>
+        <p class="page-sub">Select your preferred language to continue.</p>
+      </div>
+      <div class="lang-list">
+        <div class="lang-card" onclick="setLanguage('en')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')setLanguage('en')">
+          <div class="lang-card-left"><span class="lang-card-name">English</span><span class="lang-card-native">Continue in English</span></div>
+          <i class="ri-arrow-right-s-line" style="color:var(--text-3);font-size:1.3rem"></i>
+        </div>
+        <div class="lang-card" onclick="setLanguage('hi')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')setLanguage('hi')">
+          <div class="lang-card-left"><span class="lang-card-name">Hindi — हिंदी</span><span class="lang-card-native">हिंदी में जारी रखें</span></div>
+          <i class="ri-arrow-right-s-line" style="color:var(--text-3);font-size:1.3rem"></i>
+        </div>
+        <div class="lang-card" onclick="setLanguage('pb')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')setLanguage('pb')">
+          <div class="lang-card-left"><span class="lang-card-name">Punjabi — ਪੰਜਾਬੀ</span><span class="lang-card-native">ਪੰਜਾਬੀ ਵਿੱਚ ਜਾਰੀ ਰੱਖੋ</span></div>
+          <i class="ri-arrow-right-s-line" style="color:var(--text-3);font-size:1.3rem"></i>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SCREEN 2: Auth ─────────────────────────── -->
+    <section id="view-auth" class="view" aria-label="Authentication">
+      <div class="page-header">
+        <h1 class="page-title" id="auth-title" data-i18n="welcome_back">Welcome Back</h1>
+        <p class="page-sub" id="auth-sub" data-i18n="enter_details">Sign in to continue.</p>
+      </div>
+
+      <form id="auth-form" novalidate>
+        <div class="form-group">
+          <div class="input-wrap">
+            <i class="ri-mail-line input-icon" aria-hidden="true"></i>
+            <input type="email" id="inp-email" autocomplete="email" required aria-label="Email address" placeholder="Email address" />
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="input-wrap">
+            <i class="ri-lock-line input-icon" aria-hidden="true"></i>
+            <input type="password" id="inp-password" autocomplete="current-password" required aria-label="Password" placeholder="Password" />
+            <button type="button" class="eye-toggle" onclick="togglePwd()" id="eye-btn" aria-label="Toggle password visibility"><i class="ri-eye-off-line" id="eye-icon"></i></button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="auth-btn">
+          <span class="btn-label" data-i18n="login_btn">Login</span>
+          <i class="ri-arrow-right-line btn-label" aria-hidden="true"></i>
+        </button>
+      </form>
+
+      <div class="auth-toggle">
+        <span id="auth-toggle-text" data-i18n="new_here">New here?</span>
+        <a onclick="toggleAuthMode()" id="auth-toggle-link" data-i18n="create_account">Create an account</a>
+      </div>
+    </section>
+
+    <!-- ── SCREEN 2.5: Verify Email ───────────────── -->
+    <section id="view-verify" class="view text-center" aria-label="Email verification">
+      <div class="verify-icon" aria-hidden="true"><i class="ri-mail-send-line"></i></div>
+      <h1 class="page-title" data-i18n="check_inbox">Check your inbox</h1>
+      <p class="page-sub mt-8">We sent a verification link to<br><strong id="sent-email" style="color:var(--text-1)"></strong></p>
+      <div class="mt-24">
+        <button class="btn btn-primary" onclick="location.reload()" data-i18n="verified_btn">I've verified — Continue</button>
+        <div class="mt-12">
+          <button class="btn btn-ghost mt-8" onclick="showView('view-auth')" style="font-size:0.85rem; padding:11px 16px;">← Back to Login</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SCREEN 3: Profile Setup ────────────────── -->
+    <section id="view-onboard" class="view" aria-label="Profile setup">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="complete_profile">Complete Profile</h1>
+        <p class="page-sub" data-i18n="few_details">Just a few details to get you started.</p>
+      </div>
+
+      <form id="profile-form" novalidate>
+        <div class="photo-upload-area">
+          <label for="inp-photo" style="cursor:pointer">
+            <div class="photo-ring" id="photo-ring" role="button" aria-label="Upload profile photo" tabindex="0">
+              <i class="ri-camera-fill" aria-hidden="true"></i>
+              <img id="photo-preview" src="" alt="" style="display:none" />
+            </div>
+            <span data-i18n="upload_photo">Upload Photo</span>
+          </label>
+          <input type="file" id="inp-photo" accept="image/*" style="display:none" onchange="previewPhoto(this)" />
+        </div>
+
+        <div id="worker-cat-wrap" class="form-group hidden">
+          <label class="label" for="inp-category">Job Category</label>
+          <div class="input-wrap">
+            <i class="ri-tools-fill input-icon" aria-hidden="true"></i>
+            <select id="inp-category" aria-label="Job category">
+              <option value="" disabled selected>Select your skill</option>
+              <option value="Labour">Labour Worker</option>
+              <option value="Carpenter">Carpenter</option>
+              <option value="Maid">Maid</option>
+              <option value="Cook">Cook</option>
+              <option value="Cleaner">Home Cleaner</option>
+              <option value="Electrician">Electrician</option>
+              <option value="Plumber">Plumber</option>
+              <option value="Driver">Driver</option>
+              <option value="Security">Security Guard</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="input-wrap">
+            <i class="ri-user-3-line input-icon" aria-hidden="true"></i>
+            <input type="text" id="inp-name" autocomplete="name" required aria-label="Full name" placeholder="Full name" />
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="input-wrap">
+            <i class="ri-phone-line input-icon" aria-hidden="true"></i>
+            <input type="tel" id="inp-phone" autocomplete="tel" required aria-label="Mobile number" placeholder="Mobile number" />
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="input-wrap">
+            <i class="ri-map-pin-line input-icon" aria-hidden="true"></i>
+            <select id="inp-city" aria-label="City" required>
+              <option value="" disabled selected>Select city</option>
+              <option value="New Delhi">New Delhi</option>
+              <option value="Ludhiana">Ludhiana</option>
+              <option value="Gurgaon">Gurgaon</option>
+              <option value="Chandigarh">Chandigarh</option>
+              <option value="Amritsar">Amritsar</option>
+              <option value="Jalandhar">Jalandhar</option>
+              <option value="Mumbai">Mumbai</option>
+              <option value="Bangalore">Bangalore</option>
+              <option value="Hyderabad">Hyderabad</option>
+              <option value="Pune">Pune</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="input-wrap">
+            <i class="ri-home-4-line input-icon" aria-hidden="true"></i>
+            <input type="text" id="inp-address" autocomplete="street-address" required aria-label="Full address" placeholder="Full address" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="profile-btn">
+          <span class="btn-label" data-i18n="save_profile">Save & Continue</span>
+          <i class="ri-check-line btn-label" aria-hidden="true"></i>
+        </button>
+      </form>
+    </section>
+
+    <!-- ── SCREEN 4: Employer Dashboard ──────────── -->
+    <section id="view-employer" class="view" aria-label="Employer dashboard">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="find_workers">Find Workers</h1>
+        <p class="page-sub" id="emp-greeting">Hire trusted local workers in seconds.</p>
+      </div>
+
+      <div class="search-bar" role="search">
+        <i class="ri-search-line search-icon" aria-hidden="true"></i>
+        <select id="search-cat" aria-label="Worker category">
+          <option value="Labour">Labour Worker</option>
+          <option value="Carpenter">Carpenter</option>
+          <option value="Maid">Maid</option>
+          <option value="Cook">Cook</option>
+          <option value="Cleaner">Home Cleaner</option>
+          <option value="Electrician">Electrician</option>
+          <option value="Plumber">Plumber</option>
+          <option value="Driver">Driver</option>
+          <option value="Security">Security Guard</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="findWorkers()" id="search-btn" aria-label="Search workers" style="gap:6px; flex-shrink:0">
+          <i class="ri-search-line" aria-hidden="true"></i> Search
+        </button>
+      </div>
+
+      <!-- Skeleton loader -->
+      <div id="workers-skeleton" class="hidden" aria-hidden="true">
+        <div class="section-label">Searching nearby...</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="skeleton-card"><div class="skeleton sk-avatar"></div><div class="sk-lines"><div class="skeleton sk-h"></div><div class="skeleton sk-h-sm"></div></div><div class="skeleton sk-chip"></div></div>
+          <div class="skeleton-card"><div class="skeleton sk-avatar"></div><div class="sk-lines"><div class="skeleton sk-h"></div><div class="skeleton sk-h-sm"></div></div><div class="skeleton sk-chip"></div></div>
+          <div class="skeleton-card"><div class="skeleton sk-avatar"></div><div class="sk-lines"><div class="skeleton sk-h"></div><div class="skeleton sk-h-sm"></div></div><div class="skeleton sk-chip"></div></div>
+        </div>
+      </div>
+
+      <div id="workers-list" class="workers-grid" role="list" aria-label="Available workers"></div>
+    </section>
+
+    <!-- ── SCREEN 5: Worker Dashboard ────────────── -->
+    <section id="view-worker" class="view" aria-label="Worker dashboard">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="dashboard">My Dashboard</h1>
+        <p class="page-sub" id="worker-greeting">You're active and visible to employers.</p>
+      </div>
+
+      <!-- Waiting -->
+      <div id="worker-waiting" class="waiting-card" aria-live="polite">
+        <div class="waiting-lottie" aria-hidden="true"><i class="ri-search-eye-line"></i></div>
+        <h3 data-i18n="looking_for_jobs">Looking for jobs nearby...</h3>
+        <p>Employers can see your profile. You'll be notified instantly.</p>
+        <div class="waiting-dots" aria-hidden="true"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      </div>
+
+      <!-- Active Job -->
+      <div id="worker-active" class="hidden" aria-live="polite">
+        <div class="status-banner status-hired">
+          <div class="pulse-dot pulse-green"></div>
+          <span data-i18n="hired_msg">You've been hired! Head to the location.</span>
+        </div>
+
+        <div class="profile-job-card">
+          <img id="emp-photo" src="" alt="Employer" class="profile-job-avatar" />
+          <div class="profile-job-info">
+            <div class="profile-job-name" id="emp-name"></div>
+            <div class="profile-job-meta"><i class="ri-map-pin-line" aria-hidden="true"></i><span id="emp-address"></span></div>
+            <a id="emp-phone-link" href="#" class="call-btn" aria-label="Call employer"><i class="ri-phone-fill"></i> Call Employer</a>
+          </div>
+        </div>
+
+        <div id="otp-start-area">
+          <button class="btn btn-primary" onclick="revealOtpInput(this)" data-i18n="start_job">
+            <i class="ri-map-pin-user-line btn-label"></i>
+            <span class="btn-label">I've arrived — Start Job</span>
+          </button>
+        </div>
+
+        <div id="otp-input-card" class="otp-input-card hidden">
+          <h4 data-i18n="enter_otp">Enter OTP shared by employer</h4>
+          <div class="form-group" style="margin-bottom:16px">
+            <input type="number" id="otp-value" class="otp-input no-icon" placeholder="000000" maxlength="6" aria-label="OTP input" />
+          </div>
+          <button class="btn btn-primary" onclick="verifyOtp()" id="verify-btn" data-i18n="verify">
+            <i class="ri-shield-check-line btn-label"></i>
+            <span class="btn-label">Verify & Complete Job</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SCREEN 6: Employer Job Active ─────────── -->
+    <section id="view-job-active" class="view" aria-label="Active job screen">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="job_active">Job In Progress</h1>
+        <p class="page-sub" data-i18n="worker_on_way">The worker is on their way to you.</p>
+      </div>
+
+      <div class="status-banner status-waiting">
+        <div class="pulse-dot pulse-amber"></div>
+        <span id="job-status-text">Worker hired — awaiting arrival</span>
+      </div>
+
+      <div class="profile-job-card">
+        <img id="job-worker-photo" src="" alt="Worker" class="profile-job-avatar" />
+        <div class="profile-job-info">
+          <div class="profile-job-name" id="job-worker-name"></div>
+          <div class="profile-job-meta"><i class="ri-tools-line" aria-hidden="true"></i><span id="job-worker-cat"></span></div>
+          <a id="job-worker-phone" href="#" class="call-btn" aria-label="Call worker"><i class="ri-phone-fill"></i> Call Worker</a>
+        </div>
+      </div>
+
+      <div class="otp-display-card" aria-label="OTP code">
+        <div class="otp-label" data-i18n="share_otp">Share this OTP when work is done</div>
+        <div class="otp-number" id="otp-display" aria-live="polite">——</div>
+        <div class="otp-hint">Worker enters this to mark job complete</div>
+      </div>
+
+      <div id="emp-done-banner" class="hidden">
+        <div class="status-banner status-completed">
+          <i class="ri-check-double-line" style="font-size:1.2rem"></i>
+          <span data-i18n="work_completed">Work completed successfully!</span>
+        </div>
+        <button class="btn btn-primary" onclick="location.reload()" data-i18n="find_another">
+          <i class="ri-refresh-line btn-label"></i>
+          <span class="btn-label">Hire Another Worker</span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+  'use strict';
+
+  /* ═══════════════════════════════════════════════════
+     TRANSLATIONS
+  ═══════════════════════════════════════════════════ */
+  const T = {
+    en: {
+      who_are_you: "Who are you?",
+      select_role: "Select your role to get started.",
+      employer: "Employer",
+      worker: "Worker",
+      hire_workers: "Hire local workers",
+      looking_jobs: "Find work nearby",
+      welcome_back: "Welcome Back",
+      enter_details: "Sign in to continue.",
+      login_btn: "Login",
+      new_here: "New here?",
+      create_account: "Create account",
+      check_inbox: "Check your inbox",
+      email_sent: "We sent a verification link to",
+      verified_btn: "I've verified — Continue",
+      complete_profile: "Complete Profile",
+      few_details: "Just a few details to get you started.",
+      upload_photo: "Upload Photo",
+      save_profile: "Save & Continue",
+      find_workers: "Find Workers",
+      dashboard: "My Dashboard",
+      looking_for_jobs: "Looking for jobs nearby...",
+      hired_msg: "You've been hired! Head to the location.",
+      start_job: "I've arrived — Start Job",
+      enter_otp: "Enter OTP shared by employer",
+      verify: "Verify & Complete Job",
+      job_active: "Job In Progress",
+      worker_on_way: "The worker is on their way to you.",
+      share_otp: "Share this OTP when work is done",
+      work_completed: "Work completed successfully!",
+      find_another: "Hire Another Worker"
+    },
+    hi: {
+      who_are_you: "आप कौन हैं?",
+      select_role: "शुरू करने के लिए अपनी भूमिका चुनें।",
+      employer: "नियोक्ता",
+      worker: "कामगार",
+      hire_workers: "काम के लिए लोग चाहिए",
+      looking_jobs: "पास में काम ढूंढें",
+      welcome_back: "वापसी पर स्वागत है",
+      enter_details: "जारी रखने के लिए लॉगिन करें।",
+      login_btn: "लॉगिन करें",
+      new_here: "नए हैं?",
+      create_account: "खाता बनाएं",
+      check_inbox: "इनबॉक्स चेक करें",
+      email_sent: "सत्यापन लिंक भेजा:",
+      verified_btn: "सत्यापित किया — जारी रखें",
+      complete_profile: "प्रोफ़ाइल पूरी करें",
+      few_details: "बस कुछ जानकारी और चाहिए।",
+      upload_photo: "फोटो अपलोड करें",
+      save_profile: "सहेजें और जारी रखें",
+      find_workers: "कामगार ढूंढें",
+      dashboard: "मेरा डैशबोर्ड",
+      looking_for_jobs: "पास में काम ढूंढ रहे हैं...",
+      hired_msg: "आपको काम मिल गया है! वहाँ जाएं।",
+      start_job: "पहुँच गया — काम शुरू करें",
+      enter_otp: "मालिक का OTP डालें",
+      verify: "सत्यापित करें और पूरा करें",
+      job_active: "काम चालू है",
+      worker_on_way: "कामगार आपके पास आ रहा है।",
+      share_otp: "काम होने पर OTP दें",
+      work_completed: "काम पूरा हुआ!",
+      find_another: "दूसरा कामगार ढूंढें"
+    },
+    pb: {
+      who_are_you: "ਤੁਸੀਂ ਕੌਣ ਹੋ?",
+      select_role: "ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਭੂਮਿਕਾ ਚੁਣੋ।",
+      employer: "ਮਾਲਕ",
+      worker: "ਕਾਮਾ",
+      hire_workers: "ਕਾਮੇ ਲੱਭੋ",
+      looking_jobs: "ਨੇੜੇ ਕੰਮ ਲੱਭੋ",
+      welcome_back: "ਜੀ ਆਇਆਂ ਨੂੰ",
+      enter_details: "ਜਾਰੀ ਰੱਖਣ ਲਈ ਲਾਗਇਨ ਕਰੋ।",
+      login_btn: "ਲਾਗਇਨ",
+      new_here: "ਨਵੇਂ ਹੋ?",
+      create_account: "ਖਾਤਾ ਬਣਾਓ",
+      check_inbox: "ਇਨਬਾਕਸ ਚੈੱਕ ਕਰੋ",
+      email_sent: "ਲਿੰਕ ਭੇਜਿਆ:",
+      verified_btn: "ਤਸਦੀਕ ਕੀਤਾ — ਜਾਰੀ ਰੱਖੋ",
+      complete_profile: "ਪ੍ਰੋਫਾਈਲ ਪੂਰਾ ਕਰੋ",
+      few_details: "ਬਸ ਕੁਝ ਹੋਰ ਜਾਣਕਾਰੀ।",
+      upload_photo: "ਫੋਟੋ ਅਪਲੋਡ ਕਰੋ",
+      save_profile: "ਸੇਵ ਕਰੋ",
+      find_workers: "ਕਾਮੇ ਲੱਭੋ",
+      dashboard: "ਮੇਰਾ ਡੈਸ਼ਬੋਰਡ",
+      looking_for_jobs: "ਨੇੜੇ ਕੰਮ ਲੱਭ ਰਹੇ ਹਾਂ...",
+      hired_msg: "ਕੰਮ ਮਿਲ ਗਿਆ! ਉੱਥੇ ਜਾਓ।",
+      start_job: "ਪਹੁੰਚ ਗਿਆ — ਕੰਮ ਸ਼ੁਰੂ ਕਰੋ",
+      enter_otp: "ਮਾਲਕ ਤੋਂ OTP ਭਰੋ",
+      verify: "ਤਸਦੀਕ ਕਰੋ ਤੇ ਪੂਰਾ ਕਰੋ",
+      job_active: "ਕੰਮ ਚੱਲ ਰਿਹਾ ਹੈ",
+      worker_on_way: "ਕਾਮਾ ਰਸਤੇ ਵਿੱਚ ਹੈ।",
+      share_otp: "ਕੰਮ ਹੋਣ 'ਤੇ OTP ਦਿਓ",
+      work_completed: "ਕੰਮ ਪੂਰਾ ਹੋ ਗਿਆ!",
+      find_another: "ਹੋਰ ਕਾਮਾ ਲੱਭੋ"
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════
+     CONFIG & STATE
+  ═══════════════════════════════════════════════════ */
+  const SB_URL  = 'https://lwqzcfshlbiytiibeolt.supabase.co';
+  const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3cXpjZnNobGJpeXRpaWJlb2x0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNjU3NTQsImV4cCI6MjA5Njc0MTc1NH0._0RZXfQWpWs4CFstriChWFmo_0jvmLnNgOgFdJ3M_tU';
+  const db      = window.supabase.createClient(SB_URL, SB_KEY);
+
+  const S = {
+    user: null,
+    profile: null,
+    role: localStorage.getItem('rz_role'),
+    lang: localStorage.getItem('rz_lang') || 'en',
+    isSignup: false,
+    searchResults: [],
+    activeJob: null
+  };
+
+  /* ═══════════════════════════════════════════════════
+     UI HELPERS
+  ═══════════════════════════════════════════════════ */
+  function $(id) { return document.getElementById(id); }
+
+  function showView(id) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const el = $(id);
+    el.classList.add('active');
+    // Reset animation
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = '';
+
+    const hideLogout = ['view-role','view-lang','view-auth','view-verify'];
+    $('logoutBtn').classList.toggle('visible', !hideLogout.includes(id));
+    $('langBadge').style.display = ['view-employer','view-worker','view-job-active'].includes(id) ? 'inline-flex' : 'none';
+
+    const showMic = ['view-employer','view-worker','view-job-active'].includes(id);
+    $('mic-btn').classList.toggle('show', showMic);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function translate() {
+    const t = T[S.lang] || T.en;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const k = el.dataset.i18n;
+      if (!t[k]) return;
+      if (el.tagName === 'INPUT') el.placeholder = t[k];
+      else el.textContent = t[k];
+    });
+    $('langBadge').textContent = S.lang.toUpperCase();
+  }
+
+  function toast(msg, type = 'info') {
+    const c = $('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    const icon = type === 'success' ? 'ri-checkbox-circle-fill' : type === 'error' ? 'ri-error-warning-fill' : 'ri-information-fill';
+    el.innerHTML = `<i class="${icon}" aria-hidden="true"></i> ${msg}`;
+    c.appendChild(el);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(12px) scale(0.9)';
+      el.style.transition = 'all 0.3s ease';
+      setTimeout(() => el.remove(), 350);
+    }, 3000);
+  }
+
+  function setBtnLoading(btn, on) {
+    if (on) { btn.classList.add('btn-loading'); btn.disabled = true; }
+    else     { btn.classList.remove('btn-loading'); btn.disabled = false; }
+  }
+
+  function avatar(url) {
+    return url && !url.includes('placeholder') ? url : `https://ui-avatars.com/api/?name=User&background=6C47FF&color=fff&rounded=true&bold=true&format=svg`;
+  }
+
+  function previewPhoto(input) {
+    const f = input.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = $('photo-preview');
+      img.src = e.target.result;
+      img.style.display = 'block';
+      $('photo-ring').querySelector('i').style.display = 'none';
+    };
+    reader.readAsDataURL(f);
+  }
+
+  function togglePwd() {
+    const inp = $('inp-password');
+    const ico = $('eye-icon');
+    if (inp.type === 'password') { inp.type = 'text'; ico.className = 'ri-eye-line'; }
+    else { inp.type = 'password'; ico.className = 'ri-eye-off-line'; }
+  }
+
+  /* ═══════════════════════════════════════════════════
+     BOOT
+  ═══════════════════════════════════════════════════ */
+  window.addEventListener('DOMContentLoaded', async () => {
+    translate();
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+      S.user = session.user;
+      await loadProfile(session.user);
+    } else {
+      localStorage.removeItem('rz_role');
+      showView('view-role');
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════
+     ROLE & LANG
+  ═══════════════════════════════════════════════════ */
+  async function selectRole(role) {
+    S.role = role;
+    localStorage.setItem('rz_role', role);
+    if (S.user) {
+      // Already logged in — check role match
+      if (S.profile && S.profile.role !== role) {
+        toast(`Wrong account. Please log in as ${S.profile.role}.`, 'error');
+        setTimeout(() => location.reload(), 2000);
+        return;
+      }
+      await loadProfile(S.user);
+    } else {
+      showView('view-lang');
+    }
+  }
+
+  function setLanguage(lang) {
+    S.lang = lang;
+    localStorage.setItem('rz_lang', lang);
+    translate();
+    showView('view-auth');
+  }
+
+  function openLangPicker() {
+    // Quick inline picker via toast + re-route
+    S._prevView = document.querySelector('.view.active')?.id;
+    showView('view-lang');
+  }
+
+  /* ═══════════════════════════════════════════════════
+     AUTH
+  ═══════════════════════════════════════════════════ */
+  function toggleAuthMode() {
+    S.isSignup = !S.isSignup;
+    const t = T[S.lang] || T.en;
+    $('auth-title').textContent = S.isSignup ? t.create_account : t.welcome_back;
+    $('auth-sub').textContent   = S.isSignup ? t.few_details : t.enter_details;
+    $('auth-btn').querySelector('.btn-label').textContent = S.isSignup ? t.create_account : t.login_btn;
+    $('auth-toggle-text').textContent = S.isSignup ? 'Already a member?' : t.new_here + ' ';
+    $('auth-toggle-link').textContent = S.isSignup ? t.login_btn : t.create_account;
+    $('inp-password').autocomplete = S.isSignup ? 'new-password' : 'current-password';
+  }
+
+  $('auth-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email    = $('inp-email').value.trim();
+    const password = $('inp-password').value;
+    if (!email || !password) return;
+
+    const btn = $('auth-btn');
+    setBtnLoading(btn, true);
+
+    try {
+      if (!S.isSignup) {
+        const { data, error } = await db.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        S.user = data.user;
+        await loadProfile(data.user);
+      } else {
+        const { data, error } = await db.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: 'https://rozgaar.codeinblack.tech/' }
+        });
+        if (error) throw error;
+        $('sent-email').textContent = email;
+        showView('view-verify');
+      }
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setBtnLoading(btn, false);
+    }
+  });
+
+  async function handleLogout() {
+    await db.auth.signOut();
+    localStorage.clear();
+    location.reload();
+  }
+
+  /* ═══════════════════════════════════════════════════
+     PROFILE LOAD
+  ═══════════════════════════════════════════════════ */
+  async function loadProfile(user) {
+    S.user = user;
+    const { data: profile, error } = await db.from('profiles').select('*').eq('id', user.id).single();
+
+    if (profile && !error) {
+      S.profile = profile;
+      S.role    = profile.role;
+      S.lang    = profile.language || S.lang;
+      localStorage.setItem('rz_role', profile.role);
+      localStorage.setItem('rz_lang', S.lang);
+      translate();
+
+      if (S.role === 'employer') {
+        $('emp-greeting').textContent = `Hello, ${profile.full_name.split(' ')[0]} 👋`;
+        showView('view-employer');
+        checkActiveJobEmployer();
+      } else {
+        $('worker-greeting').textContent = `Hello, ${profile.full_name.split(' ')[0]} 👋`;
+        showView('view-worker');
+        listenForJobs();
+      }
+    } else {
+      // No profile yet — show onboarding
+      if (!S.role) { showView('view-role'); return; }
+      showView('view-onboard');
+      if (S.role === 'employer') {
+        $('worker-cat-wrap').classList.add('hidden');
+        $('inp-category').removeAttribute('required');
+      } else {
+        $('worker-cat-wrap').classList.remove('hidden');
+        $('inp-category').setAttribute('required', 'true');
+      }
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════
+     PROFILE SAVE
+  ═══════════════════════════════════════════════════ */
+  $('profile-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = $('profile-btn');
+    setBtnLoading(btn, true);
+
+    try {
+      const file = $('inp-photo').files[0];
+      let photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent($('inp-name').value)}&background=6C47FF&color=fff&rounded=true&bold=true&size=200`;
+
+      if (file) {
+        const ext  = file.name.split('.').pop();
+        const path = `${S.user.id}-${Date.now()}.${ext}`;
+        const { error: upErr } = await db.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+        if (!upErr) {
+          const { data } = db.storage.from('avatars').getPublicUrl(path);
+          photoUrl = data.publicUrl;
+        }
+      }
+
+      const role = S.role || localStorage.getItem('rz_role');
+      const payload = {
+        id: S.user.id,
+        role,
+        full_name: $('inp-name').value.trim(),
+        phone:     $('inp-phone').value.trim(),
+        city:      $('inp-city').value,
+        address:   $('inp-address').value.trim(),
+        photo_url: photoUrl,
+        category:  role === 'worker' ? $('inp-category').value : null,
+        language:  S.lang,
+        is_available: true,
+        rating: 5.0,
+        jobs_done: 0
+      };
+
+      const { error } = await db.from('profiles').upsert(payload);
+      if (error) throw error;
+      toast('Profile saved!', 'success');
+      setTimeout(() => location.reload(), 800);
+    } catch (err) {
+      toast(err.message, 'error');
+      setBtnLoading(btn, false);
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════
+     EMPLOYER: FIND WORKERS
+  ═══════════════════════════════════════════════════ */
+  async function findWorkers() {
+    const cat     = $('search-cat').value;
+    const list    = $('workers-list');
+    const skel    = $('workers-skeleton');
+    const btn     = $('search-btn');
+
+    list.innerHTML = '';
+    skel.classList.remove('hidden');
+    setBtnLoading(btn, true);
+
+    await new Promise(r => setTimeout(r, 700)); // perceived performance
+
+    const { data, error } = await db
+      .from('profiles')
+      .select('*')
+      .eq('role', 'worker')
+      .eq('category', cat)
+      .eq('is_available', true)
+      .order('rating', { ascending: false })
+      .limit(20);
+
+    skel.classList.add('hidden');
+    setBtnLoading(btn, false);
+    S.searchResults = data || [];
+
+    if (error || !data?.length) {
+      list.innerHTML = `<div class="empty-state"><i class="ri-ghost-smile-line"></i><p>No ${cat.toLowerCase()} workers found nearby.<br>Try a different category.</p></div>`;
+      return;
+    }
+
+    list.innerHTML = data.map((w, i) => `
+      <div class="worker-card" role="listitem" style="animation-delay:${i * 80}ms">
+        <img class="worker-avatar" src="${avatar(w.photo_url)}" alt="${w.full_name}" loading="lazy" />
+        <div class="worker-info">
+          <div class="worker-name">${w.full_name}</div>
+          <div class="worker-meta">
+            <span class="tag tag-city"><i class="ri-map-pin-fill"></i>${w.city}</span>
+            <span class="tag tag-rating"><i class="ri-star-fill"></i>${w.rating?.toFixed(1) || '5.0'}</span>
+            <span class="tag tag-jobs"><i class="ri-briefcase-fill"></i>${w.jobs_done || 0} jobs</span>
+          </div>
+        </div>
+        <button class="hire-btn" onclick="initiateHire('${w.id}')" id="hire-${w.id}" aria-label="Hire ${w.full_name}">
+          <i class="ri-user-add-fill"></i> Hire
+        </button>
+      </div>
+    `).join('');
+  }
+
+  async function initiateHire(wid) {
+    const worker = S.searchResults.find(w => w.id === wid);
+    if (!worker) return;
+    const btn = $(`hire-${wid}`);
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ri-loader-4-line spin"></i>`;
+
+    try {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const { error } = await db.from('jobs').insert({
+        employer_id: S.user.id,
+        worker_id:   worker.id,
+        otp,
+        status:      'hired',
+        category:    worker.category
+      });
+      if (error) throw error;
+      toast(`${worker.full_name} hired!`, 'success');
+      showJobActiveScreen(otp, worker);
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = `<i class="ri-user-add-fill"></i> Hire`;
+    }
+  }
+
+  async function checkActiveJobEmployer() {
+    const { data } = await db
+      .from('jobs')
+      .select('*, worker:worker_id(*)')
+      .eq('employer_id', S.user.id)
+      .in('status', ['hired','in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    if (data) showJobActiveScreen(data.otp, data.worker);
+  }
+
+  function showJobActiveScreen(otp, worker) {
+    $('otp-display').textContent = otp;
+    $('job-worker-name').textContent   = worker.full_name;
+    $('job-worker-cat').textContent    = worker.category || '';
+    $('job-worker-phone').href         = `tel:${worker.phone}`;
+    $('job-worker-photo').src          = avatar(worker.photo_url);
+    showView('view-job-active');
+
+    // Real-time: watch for job completion
+    const ch = db.channel('emp-job-watch').on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'jobs', filter: `employer_id=eq.${S.user.id}` },
+      payload => {
+        if (payload.new.status === 'completed') {
+          $('job-status-text').textContent = 'Job completed!';
+          $('emp-done-banner').classList.remove('hidden');
+          db.removeChannel(ch);
+        }
+      }
+    ).subscribe();
+  }
+
+  /* ═══════════════════════════════════════════════════
+     WORKER: LISTEN FOR JOBS
+  ═══════════════════════════════════════════════════ */
+  async function listenForJobs() {
+    const check = async () => {
+      const { data } = await db
+        .from('jobs')
+        .select('*, employer:employer_id(*)')
+        .eq('worker_id', S.user.id)
+        .in('status', ['hired','in_progress'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data) activateWorkerJob(data);
+    };
+
+    await check();
+
+    db.channel('worker-job-listen')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'jobs',
+        filter: `worker_id=eq.${S.user.id}`
+      }, check)
+      .subscribe();
+  }
+
+  function activateWorkerJob(data) {
+    S.activeJob = data;
+    const emp   = data.employer;
+    $('worker-waiting').classList.add('hidden');
+    $('worker-active').classList.remove('hidden');
+    $('emp-name').textContent     = emp.full_name;
+    $('emp-address').textContent  = emp.address;
+    $('emp-phone-link').href      = `tel:${emp.phone}`;
+    $('emp-photo').src            = avatar(emp.photo_url);
+  }
+
+  function revealOtpInput(btn) {
+    $('otp-start-area').classList.add('hidden');
+    $('otp-input-card').classList.remove('hidden');
+  }
+
+  async function verifyOtp() {
+    const val = $('otp-value').value.trim();
+    const btn = $('verify-btn');
+    if (!val || val.length < 6) { toast('Enter a 6-digit OTP', 'error'); return; }
+    setBtnLoading(btn, true);
+
+    if (val === S.activeJob.otp) {
+      await db.from('jobs').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', S.activeJob.id);
+      await db.from('profiles').update({ jobs_done: (S.profile.jobs_done || 0) + 1 }).eq('id', S.user.id);
+      toast('Job completed! Great work!', 'success');
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      toast('Incorrect OTP. Try again.', 'error');
+      setBtnLoading(btn, false);
+      $('otp-value').style.borderColor = 'var(--red)';
+      setTimeout(() => $('otp-value').style.borderColor = '', 2000);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════
+     VOICE RECOGNITION
+  ═══════════════════════════════════════════════════ */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition;
+
+  if (SR) {
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = S.lang === 'hi' ? 'hi-IN' : S.lang === 'pb' ? 'pa-IN' : 'en-IN';
+
+    recognition.onstart = () => $('mic-btn').classList.add('listening');
+    recognition.onend   = () => $('mic-btn').classList.remove('listening');
+    recognition.onerror = () => { $('mic-btn').classList.remove('listening'); toast('Voice not recognized', 'error'); };
+
+    recognition.onresult = async event => {
+      const text = event.results[0][0].transcript.toLowerCase();
+      toast(`Heard: "${text}"`, 'info');
+
+      if (S.role === 'employer') {
+        const sel = $('search-cat');
+        const cats = ['labour','carpenter','maid','cook','cleaner','electrician','plumber','driver','security'];
+        const found = cats.find(c => text.includes(c));
+        if (found) {
+          const opt = Array.from(sel.options).find(o => o.value.toLowerCase() === found);
+          if (opt) sel.value = opt.value;
+          toast(`Searching for ${found}...`, 'info');
+          await findWorkers();
+          setTimeout(() => {
+            const firstHireBtn = document.querySelector('.hire-btn');
+            if (firstHireBtn && !firstHireBtn.disabled) { toast('Auto-hiring first worker...'); firstHireBtn.click(); }
+          }, 600);
+        } else if (text.includes('call')) {
+          $('job-worker-phone')?.click();
+        } else {
+          toast('Say a worker type like "Plumber" or "Cook"', 'error');
+        }
+      } else if (S.role === 'worker') {
+        if (text.includes('call')) $('emp-phone-link')?.click();
+      }
+    };
+  }
+
+  function toggleVoice() {
+    if (!recognition) { toast('Voice not supported in this browser', 'error'); return; }
+    try { recognition.start(); } catch (e) { /* already running */ }
+  }
+
+  /* ═══════════════════════════════════════════════════
+     KEYBOARD ACCESSIBILITY
+  ═══════════════════════════════════════════════════ */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      $('mic-btn').classList.remove('listening');
+      try { recognition?.stop(); } catch(x) {}
+    }
+  });
+
+  </script>
+</body>
+</html>
